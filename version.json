@@ -1,4 +1,4 @@
 {
-  "version": "0.4.0",
-  "notes": "Raspberry Pi 5/ARM64 ve Debian paket desteği, dağıtımlar arası güncelleyici ve canlı Pi doğrulamaları eklendi."
+  "version": "0.4.1",
+  "notes": "NetworkManager yeniden başlatma döngüsü ve manuel servis durdurma davranışı düzeltildi; Raspberry Pi 5 üzerinde doğrulandı."
 }

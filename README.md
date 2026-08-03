@@ -1,10 +1,16 @@
-# TurkDPI 0.4.0
+# TurkDPI 0.4.1
 
 TurkDPI; CachyOS x86_64/KDE Plasma ile Debian 13 ve Raspberry Pi OS ARM64 üzerinde Discord, Roblox ve genel web erişimine odaklanan bir `nfqws` yöneticisidir. VPN değildir; trafiği uzak bir sunucuya taşımaz, TLS çözmez, telemetri toplamaz ve kullanıcı trafiğini kaydetmez.
 
 > Bu yazılım ağ paketlerinin aktarım biçimini ve seçildiğinde NetworkManager DNS ayarını değiştirir. Yerel mevzuata ve kullandığınız hizmetlerin koşullarına uygun kullanmak sizin sorumluluğunuzdadır.
 
-## 0.4.0 yenilikleri
+## 0.4.1 yenilikleri
+
+- NetworkManager DNS/DHCP olaylarının systemd servisini sürekli yeniden başlatması önlendi.
+- Manuel `systemctl stop` sonrası DNS geri yükleme olayının servisi yeniden açması engellendi.
+- Açılış, durdurma ve yeniden başlatma yaşam döngüsü Raspberry Pi 5 üzerinde doğrulandı.
+
+### 0.4.0 ile eklenenler
 
 - Raspberry Pi 5 ARM64 ve Debian 13 için yerel `.deb` paket üretimi.
 - Zapret/nfqws motorunu sabitlenmiş commit’ten ARM64 üzerinde otomatik derleme.
@@ -66,7 +72,7 @@ sudo apt install --no-install-recommends build-essential cargo cmake dpkg-dev gi
 git clone https://github.com/semih-emre/turkdpi.git
 cd turkdpi
 ./scripts/build-deb.sh
-sudo apt install ./build/deb/turkdpi_0.4.0_arm64.deb
+sudo apt install ./build/deb/turkdpi_0.4.1_arm64.deb
 ```
 
 Grafik masaüstü olmayan Pi kurulumunda servis ve komut satırı aracı kullanılabilir:
@@ -93,7 +99,7 @@ Kaynak deposundan paket oluşturma:
 ```bash
 git clone https://github.com/semih-emre/turkdpi.git
 cd turkdpi
-git archive --prefix=turkdpi-0.4.0/ -o turkdpi-0.4.0.tar.gz HEAD
+git archive --prefix=turkdpi-0.4.1/ -o turkdpi-0.4.1.tar.gz HEAD
 makepkg -Csi
 ```
 
@@ -104,7 +110,7 @@ Mevcut kurulumdan güncelleme:
 ```bash
 cd turkdpi
 git pull --ff-only
-git archive --prefix=turkdpi-0.4.0/ -o turkdpi-0.4.0.tar.gz HEAD
+git archive --prefix=turkdpi-0.4.1/ -o turkdpi-0.4.1.tar.gz HEAD
 makepkg -Csi
 ```
 
