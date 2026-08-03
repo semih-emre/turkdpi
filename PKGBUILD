@@ -1,7 +1,7 @@
 # Maintainer: TurkDPI contributors
 pkgname=turkdpi
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='CachyOS/KDE için Discord odaklı yerel DPI dayanıklılığı yöneticisi'
 arch=('x86_64')
 url='https://github.com/bol-van/zapret'
@@ -38,5 +38,5 @@ package() {
   install -Dm644 profiles/discord-hosts.txt "${pkgdir}/usr/share/turkdpi/discord-hosts.txt"
   install -Dm644 README.md "${pkgdir}/usr/share/doc/turkdpi/README.md"
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/turkdpi/LICENSE"
-  install -Dm644 "${srcdir}/zapret/LICENSE.txt" "${pkgdir}/usr/share/licenses/turkdpi/LICENSE.zapret"
+  install -Dm644 "${srcdir}/zapret/docs/LICENSE.txt" "${pkgdir}/usr/share/licenses/turkdpi/LICENSE.zapret"
 }
