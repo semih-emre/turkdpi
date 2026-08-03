@@ -1,0 +1,79 @@
+name: Linux paketlerini derle
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.architecture }} paketi
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Kaynak kodunu al
+        uses: actions/checkout@v4
+
+      - name: Derleme bağımlılıklarını kur
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential cargo cmake git ninja-build pkg-config shellcheck \
+            libmnl-dev libnetfilter-queue-dev libnfnetlink-dev zlib1g-dev \
+            qt6-base-dev qt6-declarative-dev
+
+      - name: Kaynak testlerini çalıştır
+        run: |
+          cargo fmt --check
+          cargo test
+          cargo check
+          shellcheck scripts/*.sh scripts/90-turkdpi scripts/turkdpi-sleep
+          systemd-analyze verify systemd/turkdpi.service
+
+      - name: Debian paketini oluştur
+        run: ./scripts/build-deb.sh
+
+      - name: Paket mimarisini ve dosyaları doğrula
+        shell: bash
+        run: |
+          version=$(sed -nE 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"[,]?[[:space:]]*$/\1/p' version.json)
+          package="build/deb/turkdpi_${version}_${{ matrix.architecture }}.deb"
+          test -f "${package}"
+          test "$(dpkg-deb -f "${package}" Architecture)" = "${{ matrix.architecture }}"
+
+          rm -rf build/package-check
+          dpkg-deb -x "${package}" build/package-check
+          file build/package-check/usr/bin/turkdpi-service
+          file build/package-check/usr/bin/turkdpi-gui
+          file build/package-check/usr/lib/turkdpi/nfqws
+
+          case "${{ matrix.architecture }}" in
+            amd64) expected='x86-64' ;;
+            arm64) expected='ARM aarch64' ;;
+          esac
+          file build/package-check/usr/bin/turkdpi-service | grep -F "${expected}"
+          file build/package-check/usr/bin/turkdpi-gui | grep -F "${expected}"
+          file build/package-check/usr/lib/turkdpi/nfqws | grep -F "${expected}"
+
+      - name: Paketi yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: turkdpi-${{ matrix.architecture }}
+          path: build/deb/turkdpi_*_${{ matrix.architecture }}.deb
+          if-no-files-found: error
+          retention-days: 30

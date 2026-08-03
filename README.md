@@ -75,6 +75,17 @@ cd turkdpi
 sudo apt install ./build/deb/turkdpi_0.4.1_arm64.deb
 ```
 
+## Hazır amd64 ve arm64 paketleri
+
+GitHub Actions her `main` güncellemesinde iki ayrı yerel Linux derlemesi üretir:
+
+- `turkdpi-amd64`: Intel/AMD 64-bit Debian, Ubuntu ve uyumlu dağıtımlar.
+- `turkdpi-arm64`: Raspberry Pi 5 ve diğer ARM64 Debian tabanlı sistemler.
+
+Paketler deponun **Actions → Linux paketlerini derle** sayfasındaki başarılı
+çalışmanın **Artifacts** bölümünden indirilebilir. Her pakette servis, Qt arayüzü
+ve `nfqws` dosyalarının hedef CPU mimarisi otomatik doğrulanır.
+
 Grafik masaüstü olmayan Pi kurulumunda servis ve komut satırı aracı kullanılabilir:
 
 ```bash
