@@ -57,7 +57,7 @@ Raspberry Pi OS 64-bit veya Debian 13 ARM64 üzerinde:
 ```bash
 sudo apt update
 sudo apt install --no-install-recommends build-essential cargo cmake dpkg-dev git \
-  libmnl-dev libnetfilter-queue-dev libnfnetlink-dev network-manager ninja-build \
+  libcap-dev libmnl-dev libnetfilter-queue-dev libnfnetlink-dev network-manager ninja-build \
   nftables pkexec qt6-base-dev qt6-declarative-dev qt6-qpa-plugins \
   qml6-module-qtqml-workerscript qml6-module-qtquick \
   qml6-module-qtquick-controls qml6-module-qtquick-layouts zlib1g-dev

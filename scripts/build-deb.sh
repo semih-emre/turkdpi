@@ -74,7 +74,7 @@ Priority: optional
 Architecture: ${architecture}
 Maintainer: TurkDPI contributors <smhtpl330@gmail.com>
 Installed-Size: ${installed_size}
-Depends: curl, libnetfilter-queue1, network-manager, nftables, pkexec, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qt6-qpa-plugins
+Depends: curl, libmnl0, libnetfilter-queue1, libnfnetlink0, libqt6dbus6, libqt6network6, network-manager, nftables, pkexec, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qt6-qpa-plugins, zlib1g
 Description: Discord, Roblox ve web için yerel DPI dayanıklılığı yöneticisi
  Raspberry Pi 5 ARM64, Debian ve CachyOS üzerinde nfqws, nftables ve
  NetworkManager kullanarak seçilebilir yerel profiller sağlar.
