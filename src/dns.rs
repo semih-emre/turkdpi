@@ -297,9 +297,7 @@ pub fn apply_cloudflare(state_dir: &Path) -> Result<String> {
             format!("Şifreli Cloudflare DNS etkin (DoH): {DNS_LOCAL}"),
         )
     } else {
-        return Ok(
-            "Cloudflare DNS bu ağda yanıt vermedi; mevcut otomatik DNS korundu".into(),
-        );
+        return Ok("Cloudflare DNS bu ağda yanıt vermedi; mevcut otomatik DNS korundu".into());
     };
     let active = active_connection()?;
     let path = backup_path(state_dir, &active.uuid);
