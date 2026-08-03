@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+version=${1-}
+if [[ ! ${version} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  printf '%s\n' 'Geçersiz TurkDPI sürüm numarası.' >&2
+  exit 2
+fi
+
+for command_name in cp curl find makepkg mktemp pkexec sed tar; do
+  if ! command -v "${command_name}" >/dev/null; then
+    printf 'Gerekli komut bulunamadı: %s\n' "${command_name}" >&2
+    exit 3
+  fi
+done
+
+update_dir=$(mktemp -d -t turkdpi-update.XXXXXXXX)
+cleanup() {
+  rm -rf -- "${update_dir}"
+}
+trap cleanup EXIT INT TERM
+
+archive=${update_dir}/main.tar.gz
+source_dir=${update_dir}/source
+package_source=${update_dir}/turkdpi-${version}.tar.gz
+mkdir -p -- "${source_dir}"
+
+printf 'TurkDPI %s kaynak kodu indiriliyor…\n' "${version}"
+curl --fail --location --proto '=https' --tlsv1.2 \
+  --output "${archive}" \
+  https://github.com/semih-emre/turkdpi/archive/refs/heads/main.tar.gz
+tar -xzf "${archive}" -C "${source_dir}"
+repo_dir=${source_dir}/turkdpi-main
+
+if [[ ! -f ${repo_dir}/version.json ]]; then
+  printf '%s\n' 'İndirilen kaynakta sürüm bildirimi yok.' >&2
+  exit 4
+fi
+
+manifest_version=$(sed -nE 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"[,]?[[:space:]]*$/\1/p' "${repo_dir}/version.json")
+if [[ ${manifest_version} != "${version}" ]]; then
+  printf 'Sürüm değişti veya kaynak tutarsız: beklenen %s, bulunan %s\n' "${version}" "${manifest_version:-yok}" >&2
+  exit 5
+fi
+
+tar -C "${repo_dir}" \
+  --exclude='./target' --exclude='./build' --exclude='./turkdpi-*.tar.gz' \
+  --transform="s,^\.,turkdpi-${version}," \
+  -czf "${package_source}" .
+cp -- "${package_source}" "${repo_dir}/turkdpi-${version}.tar.gz"
+
+printf '%s\n' 'Paket kullanıcı hesabında derleniyor…'
+cd -- "${repo_dir}"
+makepkg --cleanbuild --syncdeps --noconfirm
+
+package_file=$(find . -maxdepth 1 -type f -name "turkdpi-${version}-*.pkg.tar.zst" -print -quit)
+if [[ -z ${package_file} ]]; then
+  printf '%s\n' 'Derlenen TurkDPI paketi bulunamadı.' >&2
+  exit 6
+fi
+
+printf '%s\n' 'Paket Polkit yetkisiyle kuruluyor…'
+/usr/bin/pkexec /usr/bin/pacman -U --noconfirm "${repo_dir}/${package_file#./}"
+printf '%s\n' 'Güncelleme tamamlandı. TurkDPI uygulamasını kapatıp yeniden açın.'

@@ -7,7 +7,7 @@ use profile::{Profile, ProfileName};
 use serde::Serialize;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::net::{TcpStream, ToSocketAddrs, UdpSocket};
+use std::net::{ToSocketAddrs, UdpSocket};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -210,54 +210,43 @@ fn active_network_uuid() -> Option<String> {
 }
 
 fn connectivity_test() -> Result<String> {
-    let timeout = Duration::from_secs(5);
-    let dns = ("discord.com", 443)
+    ("discord.com", 443)
         .to_socket_addrs()?
         .next()
         .context("Discord DNS yanıtı yok")?;
-    TcpStream::connect_timeout(&dns, timeout).context("Discord HTTPS TCP bağlantısı başarısız")?;
-    let gateway = ("gateway.discord.gg", 443)
-        .to_socket_addrs()?
-        .next()
-        .context("Gateway DNS yanıtı yok")?;
-    TcpStream::connect_timeout(&gateway, timeout)
-        .context("Discord Gateway TCP bağlantısı başarısız")?;
-    for url in [
-        "https://discord.com/",
-        "https://discord.com/api/gateway",
-        "https://www.roblox.com/",
-    ] {
-        let result = Command::new("/usr/bin/curl")
-            .args([
-                "--fail",
-                "--silent",
-                "--show-error",
-                "--max-time",
-                "8",
-                "--output",
-                "/dev/null",
-                url,
-            ])
-            .output()
-            .context("curl çalıştırılamadı")?;
-        if !result.status.success() {
-            bail!(
-                "HTTPS testi başarısız: {}",
-                String::from_utf8_lossy(&result.stderr)
-            );
-        }
+    let result = Command::new("/usr/bin/curl")
+        .args([
+            "--fail",
+            "--silent",
+            "--show-error",
+            "--connect-timeout",
+            "5",
+            "--max-time",
+            "10",
+            "--output",
+            "/dev/null",
+            "https://discord.com/api/v10/gateway",
+        ])
+        .output()
+        .context("curl çalıştırılamadı")?;
+    if !result.status.success() {
+        bail!(
+            "Discord Gateway HTTPS testi başarısız: {}",
+            String::from_utf8_lossy(&result.stderr).trim()
+        );
     }
     let udp = UdpSocket::bind("0.0.0.0:0")?;
     udp.connect("1.1.1.1:443")?;
     udp.send(&[0u8])?;
     Ok(
-        "Discord ve Roblox HTTPS başarılı; Gateway TCP başarılı; UDP gönderimi mümkün (RTC yanıtı doğrulanmadı)"
+        "Discord Gateway HTTPS başarılı; UDP gönderimi mümkün (RTC yanıtı doğrulanmadı)"
             .into(),
     )
 }
 
 fn auto_test() -> Result<()> {
     require_root()?;
+    let mut failures = Vec::new();
     let network_uuid = active_network_uuid();
     if let Some(uuid) = &network_uuid {
         let saved = Path::new(STATE_DIR)
@@ -267,8 +256,9 @@ fn auto_test() -> Result<()> {
             if let Ok(candidate) = name.trim().parse::<ProfileName>() {
                 start(candidate)?;
                 std::thread::sleep(Duration::from_millis(800));
-                if connectivity_test().is_ok() {
-                    return Ok(());
+                match connectivity_test() {
+                    Ok(_) => return Ok(()),
+                    Err(error) => failures.push(format!("kayıtlı {}: {error:#}", candidate.as_str())),
                 }
             }
         }
@@ -281,29 +271,32 @@ fn auto_test() -> Result<()> {
     ] {
         start(candidate)?;
         std::thread::sleep(Duration::from_millis(800));
-        if let Ok(message) = connectivity_test() {
-            fs::create_dir_all(STATE_DIR)?;
-            fs::write(
-                Path::new(STATE_DIR).join("selected-profile"),
-                candidate.as_str(),
-            )?;
-            if let Some(uuid) = &network_uuid {
-                let dir = Path::new(STATE_DIR).join("networks");
-                fs::create_dir_all(&dir)?;
-                fs::write(dir.join(format!("{uuid}.profile")), candidate.as_str())?;
+        match connectivity_test() {
+            Ok(message) => {
+                fs::create_dir_all(STATE_DIR)?;
+                fs::write(
+                    Path::new(STATE_DIR).join("selected-profile"),
+                    candidate.as_str(),
+                )?;
+                if let Some(uuid) = &network_uuid {
+                    let dir = Path::new(STATE_DIR).join("networks");
+                    fs::create_dir_all(&dir)?;
+                    fs::write(dir.join(format!("{uuid}.profile")), candidate.as_str())?;
+                }
+                atomic_status(&Status {
+                    active: true,
+                    profile: candidate.as_str(),
+                    method: "otomatik seçildi",
+                    message: &message,
+                    dns_cloudflare: dns::is_cloudflare_active(Path::new(STATE_DIR)),
+                })?;
+                return Ok(());
             }
-            atomic_status(&Status {
-                active: true,
-                profile: candidate.as_str(),
-                method: "otomatik seçildi",
-                message: &message,
-                dns_cloudflare: dns::is_cloudflare_active(Path::new(STATE_DIR)),
-            })?;
-            return Ok(());
+            Err(error) => failures.push(format!("{}: {error:#}", candidate.as_str())),
         }
     }
     cleanup_inner()?;
-    bail!("hiçbir profil bağlantı testini geçemedi")
+    bail!("hiçbir profil bağlantı testini geçemedi: {}", failures.join(" | "))
 }
 
 fn status() -> Result<()> {

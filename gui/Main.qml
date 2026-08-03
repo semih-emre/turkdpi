@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 ApplicationWindow {
     id: window
-    width: 760; height: 680; visible: true
+    width: 800; height: 760; visible: true
     title: qsTr("Türkiye DPI Yöneticisi")
     color: palette.window
     property string selectedProfile: "discord"
@@ -18,7 +18,27 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 24; spacing: 16
-        Label { text: qsTr("Türkiye DPI Yöneticisi"); font.pixelSize: 28; font.bold: true }
+        RowLayout {
+            Layout.fillWidth: true
+            Label { text: qsTr("Türkiye DPI Yöneticisi"); font.pixelSize: 28; font.bold: true; Layout.fillWidth: true }
+            Label { text: "v" + backend.currentVersion; color: palette.placeholderText }
+        }
+        Frame {
+            Layout.fillWidth: true
+            RowLayout {
+                anchors.fill: parent
+                Label {
+                    text: backend.updateStatus
+                    color: backend.updateAvailable ? "#f39c12" : palette.text
+                    font.bold: backend.updateAvailable
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                }
+                BusyIndicator { running: backend.checkingUpdates; visible: running; implicitWidth: 28; implicitHeight: 28 }
+                Button { text: qsTr("Güncellemeleri Denetle"); enabled: !backend.checkingUpdates; onClicked: backend.checkForUpdates() }
+                Button { text: qsTr("Güncelle"); visible: backend.updateAvailable; enabled: !backend.checkingUpdates; highlighted: true; onClicked: backend.installUpdate() }
+            }
+        }
         GridLayout {
             columns: 2; columnSpacing: 24; rowSpacing: 8; Layout.fillWidth: true
             Label { text: qsTr("Durum:"); font.bold: true }

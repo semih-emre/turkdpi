@@ -1,12 +1,12 @@
 # Maintainer: TurkDPI contributors
 pkgname=turkdpi
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc='CachyOS/KDE için Discord, Roblox ve web odaklı yerel DPI dayanıklılığı yöneticisi'
 arch=('x86_64')
 url='https://github.com/semih-emre/turkdpi'
 license=('MIT')
-depends=('curl' 'libmnl' 'libnetfilter_queue' 'libnfnetlink' 'networkmanager' 'nftables' 'polkit' 'qt6-base' 'qt6-declarative' 'zlib-ng-compat')
+depends=('curl' 'konsole' 'libmnl' 'libnetfilter_queue' 'libnfnetlink' 'networkmanager' 'nftables' 'polkit' 'qt6-base' 'qt6-declarative' 'zlib-ng-compat')
 makedepends=('cargo' 'cmake' 'git' 'ninja' 'rust')
 source=("${pkgname}-${pkgver}.tar.gz"
         'zapret::git+https://github.com/bol-van/zapret.git#commit=f0b0d89f02f44bb047fbfde5d96e9a1fc38e46f0')
@@ -36,6 +36,7 @@ package() {
   install -Dm755 scripts/turkdpi-sleep "${pkgdir}/usr/lib/systemd/system-sleep/turkdpi"
   install -Dm644 profiles/*.toml -t "${pkgdir}/usr/share/turkdpi/profiles"
   install -Dm644 profiles/*.txt -t "${pkgdir}/usr/share/turkdpi"
+  install -Dm644 version.json "${pkgdir}/usr/share/turkdpi/version.json"
   install -Dm644 README.md "${pkgdir}/usr/share/doc/turkdpi/README.md"
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/turkdpi/LICENSE"
   install -Dm644 "${srcdir}/zapret/docs/LICENSE.txt" "${pkgdir}/usr/share/licenses/turkdpi/LICENSE.zapret"

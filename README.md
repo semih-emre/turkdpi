@@ -1,10 +1,17 @@
-# TurkDPI 0.2.0
+# TurkDPI 0.3.0
 
 TurkDPI, CachyOS x86_64 ve KDE Plasma için Discord, Roblox ve genel web erişimine odaklanan bir `nfqws` yöneticisidir. VPN değildir; trafiği uzak bir sunucuya taşımaz, TLS çözmez, telemetri toplamaz ve kullanıcı trafiğini kaydetmez.
 
 > Bu yazılım ağ paketlerinin aktarım biçimini ve seçildiğinde NetworkManager DNS ayarını değiştirir. Yerel mevzuata ve kullandığınız hizmetlerin koşullarına uygun kullanmak sizin sorumluluğunuzdadır.
 
-## 0.2.0 yenilikleri
+## 0.3.0 yenilikleri
+
+- Açılışta ve altı saatte bir GitHub üzerinden sürüm denetimi, KDE masaüstü bildirimi ve uygulama içi **Güncelle** düğmesi.
+- Güncelleme kaynak kodunu normal kullanıcı hesabında derler; yalnızca oluşan paketin kurulumu Polkit onayı ister.
+- Oturum gerektiren Discord/Roblox ana sayfalarını başarı şartı saymayan, hata ayrıntılarını gösteren daha güvenilir otomatik test.
+- Discord Voice IP Discovery/STUN için resmi Zapret örnekleriyle uyumlu, bozuk sağlama toplamı kullanmayan RTC stratejisi.
+
+### 0.2.0 ile eklenenler
 
 - Discord Voice IP Discovery ve STUN paketleri için özel RTC profili.
 - Discord Voice Ready mesajının verdiği değişken hedef portları kaçırmamak için DNS/DHCP/NTP dışındaki UDP çıkışlarının NFQUEUE tarafından görülmesi.
@@ -38,7 +45,7 @@ Her ağ değişikliğinde NetworkManager dispatcher etkin systemd servisini yeni
 ## CachyOS kurulumu
 
 ```bash
-sudo pacman -S --needed base-devel cargo cmake git ninja rust qt6-base qt6-declarative \
+sudo pacman -S --needed base-devel cargo cmake git konsole ninja rust qt6-base qt6-declarative \
   networkmanager nftables polkit curl libnetfilter_queue libnfnetlink libmnl zlib-ng-compat
 ```
 
@@ -49,7 +56,7 @@ Kaynak deposundan paket oluşturma:
 ```bash
 git clone https://github.com/semih-emre/turkdpi.git
 cd turkdpi
-git archive --prefix=turkdpi-0.2.0/ -o turkdpi-0.2.0.tar.gz HEAD
+git archive --prefix=turkdpi-0.3.0/ -o turkdpi-0.3.0.tar.gz HEAD
 makepkg -Csi
 ```
 
@@ -60,7 +67,7 @@ Mevcut kurulumdan güncelleme:
 ```bash
 cd turkdpi
 git pull --ff-only
-git archive --prefix=turkdpi-0.2.0/ -o turkdpi-0.2.0.tar.gz HEAD
+git archive --prefix=turkdpi-0.3.0/ -o turkdpi-0.3.0.tar.gz HEAD
 makepkg -Csi
 ```
 
@@ -71,6 +78,12 @@ turkdpi-gui
 ```
 
 Bir profil başlatıldığında Cloudflare DNS varsayılan olarak etkinleşir. GUI’deki DNS kutusu kapatılırsa bağlantının önceki DNS değerleri geri yüklenir.
+
+### Uygulama içinden güncelleme
+
+TurkDPI açıldıktan kısa süre sonra ve uygulama açık kaldığı sürece altı saatte bir `version.json` dosyasını projenin GitHub `main` dalından denetler. Daha yeni bir sürüm varsa KDE bildirimi gösterilir ve **Güncelle** düğmesi etkinleşir. Düğme Konsole’u açar, HTTPS ile kaynak kodunu indirir, bildirilen sürüm ile kaynağın sürümünü karşılaştırır ve paketi normal kullanıcı hesabında derler. Yalnızca son `pacman -U` adımı Polkit onayı ister.
+
+Güncelleme bittikten sonra uygulamayı kapatıp yeniden açın. Denetim başarısız olursa mevcut sürüm çalışmaya devam eder; arayüzde hata açıklaması gösterilir.
 
 Komut satırından DNS yönetimi:
 
@@ -85,7 +98,7 @@ Sistem açılışında otomatik profil testi:
 sudo systemctl enable --now turkdpi.service
 ```
 
-Discord RTC uçtan uca testi kullanıcı oturumu gerektirdiğinden otomatik test yalnız DNS, Discord/Roblox HTTPS, Discord Gateway TCP ve yerel UDP gönderimini doğrular. “UDP gönderildi” sonucu ses sunucusundan yanıt alındığı anlamına gelmez.
+Discord RTC uçtan uca testi kullanıcı oturumu gerektirdiğinden otomatik test yalnız DNS çözümlemesini, kimlik doğrulama istemeyen Discord Gateway HTTPS uç noktasını ve yerel UDP gönderimini doğrular. “UDP gönderildi” sonucu ses sunucusundan yanıt alındığı anlamına gelmez.
 
 ## Kaldırma ve kurtarma
 
