@@ -288,6 +288,20 @@ fn reapply_if_active(uuid: &str) -> Result<()> {
 }
 
 pub fn apply_cloudflare(state_dir: &Path) -> Result<String> {
+    if marker_path(state_dir).exists() {
+        if let (Ok(active), Ok(marker_uuid)) =
+            (active_connection(), fs::read_to_string(marker_path(state_dir)))
+        {
+            if active.uuid == marker_uuid.trim() {
+                if dns_server_responds(&["127.0.3.1:53"]) {
+                    return Ok(format!("Şifreli Cloudflare DNS etkin (DoH): {DNS_LOCAL}"));
+                }
+                if cloudflare_dns_responds() {
+                    return Ok(format!("Cloudflare DNS etkin: {DNS_V4}"));
+                }
+            }
+        }
+    }
     let (ipv4_dns, dns_message) = if cloudflare_dns_responds() {
         stop_dnscrypt(state_dir);
         (DNS_V4, format!("Cloudflare DNS etkin: {DNS_V4}"))

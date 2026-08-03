@@ -118,7 +118,7 @@ fn start(name: ProfileName) -> Result<()> {
     validate_engine(200, &profile, false)?;
     validate_engine(201, &profile, true)?;
     nft::backup_ruleset(Path::new(STATE_DIR))?;
-    cleanup_inner()?;
+    cleanup_inner(false)?;
     let dns_message = dns::apply_cloudflare(Path::new(STATE_DIR))?;
     if let Err(error) = nft::apply() {
         let _ = dns::restore(Path::new(STATE_DIR));
@@ -165,7 +165,7 @@ fn stop_pid(pid: i32) {
     }
 }
 
-fn cleanup_inner() -> Result<()> {
+fn cleanup_inner(restore_dns: bool) -> Result<()> {
     let mut pids = Vec::new();
     if let Ok(raw) = fs::read_to_string(pid_file()) {
         for line in raw.lines() {
@@ -186,7 +186,11 @@ fn cleanup_inner() -> Result<()> {
     }
     let _ = fs::remove_file(pid_file());
     let nft_result = nft::cleanup();
-    let dns_result = dns::restore(Path::new(STATE_DIR));
+    let dns_result = if restore_dns {
+        dns::restore(Path::new(STATE_DIR))
+    } else {
+        Ok("DNS ayarı korundu".to_owned())
+    };
     nft_result?;
     let dns_message = dns_result?;
     atomic_status(&Status {
@@ -194,14 +198,14 @@ fn cleanup_inner() -> Result<()> {
         profile: "none",
         method: "none",
         message: &dns_message,
-        dns_cloudflare: false,
+        dns_cloudflare: !restore_dns && dns::is_cloudflare_active(Path::new(STATE_DIR)),
     })
 }
 
 fn cleanup() -> Result<()> {
     require_root()?;
     nft::backup_ruleset(Path::new(STATE_DIR))?;
-    cleanup_inner()
+    cleanup_inner(true)
 }
 
 fn active_network_uuid() -> Option<String> {
@@ -295,7 +299,7 @@ fn auto_test() -> Result<()> {
             Err(error) => failures.push(format!("{}: {error:#}", candidate.as_str())),
         }
     }
-    cleanup_inner()?;
+    cleanup_inner(true)?;
     bail!(
         "hiçbir profil bağlantı testini geçemedi: {}",
         failures.join(" | ")
