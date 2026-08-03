@@ -131,11 +131,20 @@ fn modify(uuid: &str, values: &DnsBackup) -> Result<()> {
         &values.ipv4_dns,
         "ipv4.ignore-auto-dns",
         &values.ipv4_ignore_auto_dns,
-        "ipv6.dns",
-        &values.ipv6_dns,
-        "ipv6.ignore-auto-dns",
-        &values.ipv6_ignore_auto_dns,
     ])?;
+    let ipv6_method = nmcli(&["-g", "ipv6.method", "connection", "show", "uuid", uuid])?;
+    if !matches!(ipv6_method.trim(), "ignore" | "disabled") {
+        nmcli(&[
+            "connection",
+            "modify",
+            "uuid",
+            uuid,
+            "ipv6.dns",
+            &values.ipv6_dns,
+            "ipv6.ignore-auto-dns",
+            &values.ipv6_ignore_auto_dns,
+        ])?;
+    }
     Ok(())
 }
 
