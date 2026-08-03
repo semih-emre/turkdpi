@@ -4,14 +4,48 @@ set -euo pipefail
 interface_name=${1-}
 event_name=${2-}
 
+if [[ -e /var/lib/turkdpi/dispatcher-stop ]]; then
+  exit 0
+fi
+
 case "$event_name" in
-  up|dhcp4-change|dhcp6-change|connectivity-change)
+  up|dhcp4-change|dhcp6-change)
     if /usr/bin/systemctl is-enabled --quiet turkdpi.service; then
-      /usr/bin/systemctl try-restart turkdpi.service
+      service_state=$(/usr/bin/systemctl is-active turkdpi.service 2>/dev/null || true)
+      case "$service_state" in
+        activating|deactivating)
+          exit 0
+          ;;
+        active)
+          marker_uuid=
+          if [[ -r /var/lib/turkdpi/dns-connection ]]; then
+            IFS= read -r marker_uuid </var/lib/turkdpi/dns-connection || true
+          fi
+          if [[ -n ${CONNECTION_UUID-} && ${CONNECTION_UUID} == "$marker_uuid" ]]; then
+            exit 0
+          fi
+          /usr/bin/systemctl try-restart turkdpi.service
+          ;;
+        *)
+          /usr/bin/systemctl start turkdpi.service
+          ;;
+      esac
+    fi
+    ;;
+  connectivity-change)
+    if /usr/bin/systemctl is-enabled --quiet turkdpi.service; then
+      service_state=$(/usr/bin/systemctl is-active turkdpi.service 2>/dev/null || true)
+      case "$service_state" in
+        active|activating|deactivating) ;;
+        *) /usr/bin/systemctl start turkdpi.service ;;
+      esac
     fi
     ;;
   down)
-    /usr/bin/systemctl try-stop turkdpi.service
+    # Mevcut nfqws kuralları bağlantı yeniden gelene kadar güvenle bekleyebilir.
+    # Servisi burada durdurmak DNS geri yükleme olayının yeni bir start kuyruğa
+    # almasına ve manuel systemctl stop işleminin bozulmasına neden olur.
+    :
     ;;
 esac
 

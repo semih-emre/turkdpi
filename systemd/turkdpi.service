@@ -7,7 +7,9 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+ExecStartPre=/usr/bin/rm -f /var/lib/turkdpi/dispatcher-stop
 ExecStart=/usr/bin/turkdpi-service auto
+ExecStop=/usr/bin/touch /var/lib/turkdpi/dispatcher-stop
 ExecStop=/usr/bin/turkdpi-service cleanup
 TimeoutStartSec=300
 TimeoutStopSec=20
