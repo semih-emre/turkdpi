@@ -12,8 +12,8 @@ const NMCLI: &str = "/usr/bin/nmcli";
 const DNS_V4: &str = "1.1.1.1,1.0.0.1";
 const DNS_V6: &str = "2606:4700:4700::1111,2606:4700:4700::1001";
 const DNS_QUERY: &[u8] = &[
-    0x54, 0x44, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, b'e',
-    b'x', b'a', b'm', b'p', b'l', b'e', 0x03, b'c', b'o', b'm', 0x00, 0x00, 0x01, 0x00, 0x01,
+    0x54, 0x44, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, b'e', b'x', b'a',
+    b'm', b'p', b'l', b'e', 0x03, b'c', b'o', b'm', 0x00, 0x00, 0x01, 0x00, 0x01,
 ];
 
 #[derive(Debug)]
@@ -115,10 +115,7 @@ fn cloudflare_dns_responds() -> bool {
         }
         let mut response = [0_u8; 512];
         if let Ok(length) = socket.recv(&mut response) {
-            if length >= 12
-                && response[0..2] == DNS_QUERY[0..2]
-                && response[2] & 0x80 != 0
-            {
+            if length >= 12 && response[0..2] == DNS_QUERY[0..2] && response[2] & 0x80 != 0 {
                 return true;
             }
         }
@@ -191,9 +188,7 @@ fn reapply_if_active(uuid: &str) -> Result<()> {
 
 pub fn apply_cloudflare(state_dir: &Path) -> Result<String> {
     if !cloudflare_dns_responds() {
-        return Ok(
-            "Cloudflare DNS bu ağda yanıt vermedi; mevcut otomatik DNS korundu".into(),
-        );
+        return Ok("Cloudflare DNS bu ağda yanıt vermedi; mevcut otomatik DNS korundu".into());
     }
     let active = active_connection()?;
     let path = backup_path(state_dir, &active.uuid);
