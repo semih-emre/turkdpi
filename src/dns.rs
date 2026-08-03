@@ -2,13 +2,19 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
+use std::net::UdpSocket;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 const NMCLI: &str = "/usr/bin/nmcli";
 const DNS_V4: &str = "1.1.1.1,1.0.0.1";
 const DNS_V6: &str = "2606:4700:4700::1111,2606:4700:4700::1001";
+const DNS_QUERY: &[u8] = &[
+    0x54, 0x44, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, b'e',
+    b'x', b'a', b'm', b'p', b'l', b'e', 0x03, b'c', b'o', b'm', 0x00, 0x00, 0x01, 0x00, 0x01,
+];
 
 #[derive(Debug)]
 pub struct ActiveConnection {
@@ -94,6 +100,32 @@ fn marker_path(state_dir: &Path) -> PathBuf {
     state_dir.join("dns-connection")
 }
 
+fn cloudflare_dns_responds() -> bool {
+    for server in ["1.1.1.1:53", "1.0.0.1:53"] {
+        let Ok(socket) = UdpSocket::bind("0.0.0.0:0") else {
+            continue;
+        };
+        let timeout = Some(Duration::from_millis(1500));
+        if socket.set_read_timeout(timeout).is_err()
+            || socket.set_write_timeout(timeout).is_err()
+            || socket.connect(server).is_err()
+            || socket.send(DNS_QUERY).is_err()
+        {
+            continue;
+        }
+        let mut response = [0_u8; 512];
+        if let Ok(length) = socket.recv(&mut response) {
+            if length >= 12
+                && response[0..2] == DNS_QUERY[0..2]
+                && response[2] & 0x80 != 0
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn read_current(uuid: &str) -> Result<DnsBackup> {
     validate_uuid(uuid)?;
     let property = |name: &str| -> Result<String> {
@@ -158,6 +190,11 @@ fn reapply_if_active(uuid: &str) -> Result<()> {
 }
 
 pub fn apply_cloudflare(state_dir: &Path) -> Result<String> {
+    if !cloudflare_dns_responds() {
+        return Ok(
+            "Cloudflare DNS bu ağda yanıt vermedi; mevcut otomatik DNS korundu".into(),
+        );
+    }
     let active = active_connection()?;
     let path = backup_path(state_dir, &active.uuid);
     if !path.exists() {

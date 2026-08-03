@@ -149,7 +149,7 @@ fn start(name: ProfileName) -> Result<()> {
         profile: name.as_str(),
         method: &profile.description,
         message: &message,
-        dns_cloudflare: true,
+        dns_cloudflare: dns::is_cloudflare_active(Path::new(STATE_DIR)),
     })
 }
 
