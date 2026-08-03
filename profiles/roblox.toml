@@ -1,5 +1,5 @@
 name = "roblox"
 description = "Roblox web/CDN ve dinamik oyun UDP oturumları"
 hostlist = "/usr/share/turkdpi/roblox-hosts.txt"
-tcp_args = ["--filter-tcp=80,443", "--filter-l7=http,tls", "--dpi-desync=fake,multisplit", "--dpi-desync-split-pos=1,midsld", "--dpi-desync-fooling=badsum", "--dpi-desync-repeats=5", "--dpi-desync-cutoff=n8"]
+tcp_args = ["--filter-tcp=80,443", "--filter-l7=http,tls", "--dpi-desync=fake", "--dpi-desync-ttl=3"]
 udp_args = ["--filter-udp=443", "--filter-l7=quic", "--hostlist=/usr/share/turkdpi/roblox-hosts.txt", "--dpi-desync=fake", "--dpi-desync-fooling=badsum", "--dpi-desync-repeats=5", "--dpi-desync-cutoff=n6", "--new", "--filter-udp=49152-65535", "--filter-l7=unknown", "--dpi-desync=fake", "--dpi-desync-any-protocol=1", "--dpi-desync-fooling=badsum", "--dpi-desync-repeats=2", "--dpi-desync-cutoff=n3"]

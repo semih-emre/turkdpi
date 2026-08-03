@@ -1,4 +1,4 @@
 name = "aggressive"
 description = "Tüm HTTP/TLS/QUIC ve ilk bilinmeyen UDP paketleri için agresif desync"
-tcp_args = ["--filter-tcp=80,443", "--filter-l7=http,tls", "--dpi-desync=fake,multisplit", "--dpi-desync-split-pos=1,midsld", "--dpi-desync-fooling=md5sig,badsum", "--dpi-desync-repeats=8", "--dpi-desync-cutoff=n10"]
+tcp_args = ["--filter-tcp=80,443", "--filter-l7=http,tls", "--dpi-desync=fake", "--dpi-desync-ttl=3"]
 udp_args = ["--filter-udp=*", "--filter-l7=discord,stun", "--dpi-desync=fake", "--dpi-desync-repeats=11", "--dpi-desync-cutoff=n8", "--new", "--filter-udp=443", "--filter-l7=quic", "--dpi-desync=fake", "--dpi-desync-fooling=badsum", "--dpi-desync-repeats=8", "--dpi-desync-cutoff=n8", "--new", "--filter-udp=*", "--filter-l7=unknown", "--dpi-desync=fake", "--dpi-desync-any-protocol=1", "--dpi-desync-fooling=badsum", "--dpi-desync-repeats=3", "--dpi-desync-cutoff=n3"]
