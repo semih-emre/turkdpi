@@ -5,12 +5,14 @@ use std::io::Write;
 use std::net::{ToSocketAddrs, UdpSocket};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::Duration;
 
 const NMCLI: &str = "/usr/bin/nmcli";
 const DNS_V4: &str = "1.1.1.1,1.0.0.1";
 const DNS_V6: &str = "2606:4700:4700::1111,2606:4700:4700::1001";
+const DNS_LOCAL: &str = "127.0.3.1";
+const DNSCRYPT_CONFIG: &str = "/usr/share/turkdpi/dnscrypt-proxy.toml";
 const DNS_QUERY: &[u8] = &[
     0x54, 0x44, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, b'd', b'i', b's',
     b'c', b'o', b'r', b'd', 0x03, b'c', b'o', b'm', 0x00, 0x00, 0x01, 0x00, 0x01,
@@ -100,8 +102,8 @@ fn marker_path(state_dir: &Path) -> PathBuf {
     state_dir.join("dns-connection")
 }
 
-fn cloudflare_dns_responds() -> bool {
-    for server in ["1.1.1.1:53", "1.0.0.1:53"] {
+fn dns_server_responds(servers: &[&str]) -> bool {
+    for server in servers {
         let Ok(socket) = UdpSocket::bind("0.0.0.0:0") else {
             continue;
         };
@@ -126,6 +128,85 @@ fn cloudflare_dns_responds() -> bool {
         }
     }
     false
+}
+
+fn cloudflare_dns_responds() -> bool {
+    dns_server_responds(&["1.1.1.1:53", "1.0.0.1:53"])
+}
+
+fn dnscrypt_executable() -> Option<&'static str> {
+    ["/usr/sbin/dnscrypt-proxy", "/usr/bin/dnscrypt-proxy"]
+        .into_iter()
+        .find(|path| Path::new(path).is_file())
+}
+
+fn dnscrypt_pid_path(state_dir: &Path) -> PathBuf {
+    state_dir.join("dnscrypt-proxy.pid")
+}
+
+fn stop_dnscrypt(state_dir: &Path) {
+    let path = dnscrypt_pid_path(state_dir);
+    let Ok(raw_pid) = fs::read_to_string(&path) else {
+        return;
+    };
+    let Ok(pid) = raw_pid.trim().parse::<i32>() else {
+        let _ = fs::remove_file(path);
+        return;
+    };
+    if pid > 1 {
+        let executable = fs::read_link(format!("/proc/{pid}/exe")).ok();
+        let is_dnscrypt = executable.as_deref().is_some_and(|candidate| {
+            candidate == Path::new("/usr/sbin/dnscrypt-proxy")
+                || candidate == Path::new("/usr/bin/dnscrypt-proxy")
+        });
+        if is_dnscrypt {
+            unsafe {
+                libc::kill(pid, libc::SIGTERM);
+            }
+            for _ in 0..10 {
+                if !Path::new(&format!("/proc/{pid}")).exists() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            if Path::new(&format!("/proc/{pid}")).exists() {
+                unsafe {
+                    libc::kill(pid, libc::SIGKILL);
+                }
+            }
+        }
+    }
+    let _ = fs::remove_file(path);
+}
+
+fn start_dnscrypt(state_dir: &Path) -> Result<bool> {
+    stop_dnscrypt(state_dir);
+    let Some(executable) = dnscrypt_executable() else {
+        return Ok(false);
+    };
+    if !Path::new(DNSCRYPT_CONFIG).is_file() {
+        return Ok(false);
+    }
+    fs::create_dir_all(state_dir)?;
+    let mut child = Command::new(executable)
+        .args(["-config", DNSCRYPT_CONFIG])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .context("şifreli DNS hizmeti başlatılamadı")?;
+    fs::write(dnscrypt_pid_path(state_dir), format!("{}\n", child.id()))?;
+    for _ in 0..30 {
+        if child.try_wait()?.is_some() {
+            break;
+        }
+        if dns_server_responds(&["127.0.3.1:53"]) {
+            return Ok(true);
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+    stop_dnscrypt(state_dir);
+    Ok(false)
 }
 
 fn system_dns_responds() -> bool {
@@ -207,9 +288,19 @@ fn reapply_if_active(uuid: &str) -> Result<()> {
 }
 
 pub fn apply_cloudflare(state_dir: &Path) -> Result<String> {
-    if !cloudflare_dns_responds() {
-        return Ok("Cloudflare DNS bu ağda yanıt vermedi; mevcut otomatik DNS korundu".into());
-    }
+    let (ipv4_dns, dns_message) = if cloudflare_dns_responds() {
+        stop_dnscrypt(state_dir);
+        (DNS_V4, format!("Cloudflare DNS etkin: {DNS_V4}"))
+    } else if start_dnscrypt(state_dir)? {
+        (
+            DNS_LOCAL,
+            format!("Şifreli Cloudflare DNS etkin (DoH): {DNS_LOCAL}"),
+        )
+    } else {
+        return Ok(
+            "Cloudflare DNS bu ağda yanıt vermedi; mevcut otomatik DNS korundu".into(),
+        );
+    };
     let active = active_connection()?;
     let path = backup_path(state_dir, &active.uuid);
     if !path.exists() {
@@ -226,7 +317,7 @@ pub fn apply_cloudflare(state_dir: &Path) -> Result<String> {
     }
 
     let cloudflare = DnsBackup {
-        ipv4_dns: DNS_V4.into(),
+        ipv4_dns: ipv4_dns.into(),
         ipv4_ignore_auto_dns: "yes".into(),
         ipv6_dns: DNS_V6.into(),
         ipv6_ignore_auto_dns: "yes".into(),
@@ -246,12 +337,13 @@ pub fn apply_cloudflare(state_dir: &Path) -> Result<String> {
                 .into(),
         );
     }
-    Ok(format!("Cloudflare DNS etkin: {DNS_V4}"))
+    Ok(dns_message)
 }
 
 pub fn restore(state_dir: &Path) -> Result<String> {
     let marker = marker_path(state_dir);
     let Ok(raw_uuid) = fs::read_to_string(&marker) else {
+        stop_dnscrypt(state_dir);
         return Ok("DNS değişikliği yok".into());
     };
     let uuid = raw_uuid.trim();
@@ -266,6 +358,7 @@ pub fn restore(state_dir: &Path) -> Result<String> {
     reapply_if_active(uuid)?;
     fs::remove_file(path)?;
     fs::remove_file(marker)?;
+    stop_dnscrypt(state_dir);
     Ok("Önceki DNS ayarları geri yüklendi".into())
 }
 

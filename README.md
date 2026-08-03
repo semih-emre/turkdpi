@@ -11,6 +11,7 @@ TurkDPI; CachyOS x86_64/KDE Plasma ile Debian 13 ve Raspberry Pi OS ARM64 üzeri
 - Arch/CachyOS ve Debian/Raspberry Pi OS arasında çalışan ortak uygulama içi güncelleyici.
 - Debian’daki `/usr/sbin/nft` yolu ve KDE dışındaki `x-terminal-emulator` desteği.
 - Arch paketinde `aarch64` mimarisi ve dağıtımlar arası `zlib` sanal bağımlılığı.
+- UDP/53 üzerindeki Cloudflare DNS engellenirse otomatik devreye giren şifreli Cloudflare DoH yedeği.
 
 ### 0.3.0 ile eklenenler
 
@@ -45,7 +46,7 @@ Alan adına göre filtreleme TLS SNI/HTTP Host ve QUIC Initial aşamasında yap�
 - `turkdpi-service`: Root yetkili Rust yardımcısı. Yalnızca sabit eylemleri ve beyaz listedeki profil/DNS değerlerini kabul eder; shell oluşturmaz.
 - Polkit: GUI, yardımcının mutlak yolunu `pkexec` ile çağırır.
 - nftables: Yalnızca `table inet turkdpi` oluşturulur/silinir. NFQUEUE kuralları `bypass` içerir; motor yoksa trafik kesilmez. Loopback ile DNS, DHCPv4/v6 ve NTP UDP trafiği kuyruğa alınmaz.
-- DNS: `/etc/resolv.conf` doğrudan yazılmaz. Etkin NetworkManager bağlantısı `nmcli` process API ile değiştirilir.
+- DNS: `/etc/resolv.conf` doğrudan yazılmaz. Etkin NetworkManager bağlantısı `nmcli` process API ile değiştirilir. Önce `1.1.1.1` ve `1.0.0.1` denenir; UDP DNS engelliyse yalnız loopback üzerinde çalışan şifreli Cloudflare DoH yedeği kullanılır.
 - Gizlilik: Paket içeriği, kullanıcı mesajı, DNS sorgusu veya trafik kaydı tutulmaz.
 
 Her ağ değişikliğinde NetworkManager dispatcher etkin systemd servisini yeniden başlatır. Otomatik profil sonucu bağlantı UUID’siyle `/var/lib/turkdpi/networks/` altında saklanır. DNS yedeği `/var/lib/turkdpi/dns-backups/` altında kip `0600` ile tutulur.
@@ -57,7 +58,7 @@ Raspberry Pi OS 64-bit veya Debian 13 ARM64 üzerinde:
 ```bash
 sudo apt update
 sudo apt install --no-install-recommends build-essential cargo cmake dpkg-dev git \
-  libcap-dev libmnl-dev libnetfilter-queue-dev libnfnetlink-dev network-manager ninja-build \
+  dnscrypt-proxy libcap-dev libmnl-dev libnetfilter-queue-dev libnfnetlink-dev network-manager ninja-build \
   nftables pkexec qt6-base-dev qt6-declarative-dev qt6-qpa-plugins \
   qml6-module-qtqml-workerscript qml6-module-qtquick \
   qml6-module-qtquick-controls qml6-module-qtquick-layouts zlib1g-dev
@@ -81,7 +82,7 @@ Qt arayüzü için çalışan bir Wayland/X11 oturumu gerekir. Paket, grafik otu
 ## CachyOS kurulumu
 
 ```bash
-sudo pacman -S --needed base-devel cargo cmake git konsole ninja rust qt6-base qt6-declarative \
+sudo pacman -S --needed base-devel cargo cmake dnscrypt-proxy git konsole ninja rust qt6-base qt6-declarative \
   networkmanager nftables polkit curl libnetfilter_queue libnfnetlink libmnl zlib-ng-compat
 ```
 
@@ -113,7 +114,7 @@ makepkg -Csi
 turkdpi-gui
 ```
 
-Bir profil başlatıldığında Cloudflare DNS varsayılan olarak etkinleşir. GUI’deki DNS kutusu kapatılırsa bağlantının önceki DNS değerleri geri yüklenir.
+Bir profil başlatıldığında Cloudflare DNS varsayılan olarak etkinleşir. Doğrudan `1.1.1.1`/`1.0.0.1` yanıt vermezse uygulama paketle gelen sabit Cloudflare doğrulayıcılarıyla `127.0.3.1` üzerinde şifreli DoH yedeğini başlatır. GUI’deki DNS kutusu kapatılırsa süreç durdurulur ve bağlantının önceki DNS değerleri geri yüklenir.
 
 ### Uygulama içinden güncelleme
 
@@ -166,7 +167,7 @@ Hiçbir zaman `nft flush ruleset` çalıştırmayın. Her ağ kuralı değişikl
 - Discord RTC testi oturum açmadan tamamlanamaz.
 - Roblox oyun trafiği dinamik UDP portu ve IP kullanır. Roblox profili `49152–65535/UDP` aralığındaki tanınmayan ilk paketleri işler ve aynı aralıktaki başka uygulamaları etkileyebilir.
 - Agresif profil bilinmeyen UDP trafiğine de müdahale eder; yalnız son seçenek olarak kullanılmalıdır.
-- Cloudflare DNS captive portal kullanan halka açık Wi‑Fi ağlarında giriş sayfasını engelleyebilir. Bu durumda DNS kutusunu kapatın.
+- Cloudflare DNS veya şifreli DoH captive portal kullanan halka açık Wi‑Fi ağlarında giriş sayfasını engelleyebilir. Bu durumda DNS kutusunu kapatın.
 - Raspberry Pi OS Lite gibi grafik oturumu olmayan sistemlerde Qt arayüzü açılamaz; servis ve CLI kullanılabilir.
 - Raspberry Pi’de Discord/Roblox istemcisi çalışmıyorsa gerçek uygulama trafiğinin uçtan uca testi aynı ağdaki istemci cihazdan yapılmalıdır.
 

@@ -60,6 +60,7 @@ install -Dm755 "${project_dir}/scripts/90-turkdpi" "${package_root}/etc/NetworkM
 install -Dm755 "${project_dir}/scripts/turkdpi-sleep" "${package_root}/usr/lib/systemd/system-sleep/turkdpi"
 install -Dm644 "${project_dir}"/profiles/*.toml -t "${package_root}/usr/share/turkdpi/profiles"
 install -Dm644 "${project_dir}"/profiles/*.txt -t "${package_root}/usr/share/turkdpi"
+install -Dm644 "${project_dir}/config/dnscrypt-proxy.toml" "${package_root}/usr/share/turkdpi/dnscrypt-proxy.toml"
 install -Dm644 "${project_dir}/version.json" "${package_root}/usr/share/turkdpi/version.json"
 install -Dm644 "${project_dir}/README.md" "${package_root}/usr/share/doc/turkdpi/README.md"
 install -Dm644 "${project_dir}/LICENSE" "${package_root}/usr/share/doc/turkdpi/copyright"
@@ -74,7 +75,7 @@ Priority: optional
 Architecture: ${architecture}
 Maintainer: TurkDPI contributors <smhtpl330@gmail.com>
 Installed-Size: ${installed_size}
-Depends: curl, libmnl0, libnetfilter-queue1, libnfnetlink0, libqt6dbus6, libqt6network6, network-manager, nftables, pkexec, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qt6-qpa-plugins, zlib1g
+Depends: curl, dnscrypt-proxy, libmnl0, libnetfilter-queue1, libnfnetlink0, libqt6dbus6, libqt6network6, network-manager, nftables, pkexec, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qt6-qpa-plugins, zlib1g
 Description: Discord, Roblox ve web için yerel DPI dayanıklılığı yöneticisi
  Raspberry Pi 5 ARM64, Debian ve CachyOS üzerinde nfqws, nftables ve
  NetworkManager kullanarak seçilebilir yerel profiller sağlar.
