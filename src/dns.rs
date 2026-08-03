@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::net::UdpSocket;
+use std::net::{ToSocketAddrs, UdpSocket};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -123,6 +123,21 @@ fn cloudflare_dns_responds() -> bool {
     false
 }
 
+fn system_dns_responds() -> bool {
+    for _ in 0..4 {
+        if ("cloudflare.com", 443)
+            .to_socket_addrs()
+            .ok()
+            .and_then(|mut addresses| addresses.next())
+            .is_some()
+        {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(500));
+    }
+    false
+}
+
 fn read_current(uuid: &str) -> Result<DnsBackup> {
     validate_uuid(uuid)?;
     let property = |name: &str| -> Result<String> {
@@ -218,6 +233,13 @@ pub fn apply_cloudflare(state_dir: &Path) -> Result<String> {
     {
         let _ = restore(state_dir);
         return Err(error);
+    }
+    if !system_dns_responds() {
+        restore(state_dir).context("Cloudflare DNS sonrası otomatik DNS geri yüklenemedi")?;
+        return Ok(
+            "Cloudflare DNS uygulandıktan sonra doğrulanamadı; mevcut otomatik DNS geri yüklendi"
+                .into(),
+        );
     }
     Ok(format!("Cloudflare DNS etkin: {DNS_V4}"))
 }
