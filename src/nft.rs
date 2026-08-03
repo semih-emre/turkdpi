@@ -11,7 +11,7 @@ table inet turkdpi {
   chain output {
     type filter hook output priority mangle; policy accept;
     meta l4proto tcp tcp dport { 80, 443 } queue num 200 bypass
-    meta l4proto udp udp dport { 443, 50000-65535 } queue num 201 bypass
+    oifname != "lo" meta l4proto udp udp dport { 1-52, 54-66, 69-122, 124-545, 548-65535 } queue num 201 bypass
   }
 }
 "#;

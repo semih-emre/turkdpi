@@ -31,10 +31,12 @@ sudo /usr/bin/install -Dm644 "${project_dir}/systemd/turkdpi.service" /usr/lib/s
 sudo /usr/bin/install -Dm644 "${project_dir}/polkit/org.turkdpi.manage.policy" /usr/share/polkit-1/actions/org.turkdpi.manage.policy
 sudo /usr/bin/install -Dm755 "${project_dir}/scripts/90-turkdpi" /etc/NetworkManager/dispatcher.d/90-turkdpi
 sudo /usr/bin/install -Dm755 "${project_dir}/scripts/turkdpi-sleep" /usr/lib/systemd/system-sleep/turkdpi
-for profile in safe balanced discord aggressive; do
+for profile in safe balanced discord roblox general aggressive; do
   sudo /usr/bin/install -Dm644 "${project_dir}/profiles/${profile}.toml" "/usr/share/turkdpi/profiles/${profile}.toml"
 done
-sudo /usr/bin/install -Dm644 "${project_dir}/profiles/discord-hosts.txt" /usr/share/turkdpi/discord-hosts.txt
+for hostlist in discord-hosts roblox-hosts services-hosts; do
+  sudo /usr/bin/install -Dm644 "${project_dir}/profiles/${hostlist}.txt" "/usr/share/turkdpi/${hostlist}.txt"
+done
 sudo /usr/bin/install -Dm644 "${project_dir}/README.md" /usr/share/doc/turkdpi/README.md
 sudo /usr/bin/install -Dm644 "${project_dir}/LICENSE" /usr/share/licenses/turkdpi/LICENSE
 sudo /usr/bin/systemctl daemon-reload

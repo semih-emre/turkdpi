@@ -14,6 +14,7 @@ class Backend final : public QObject {
     Q_PROPERTY(QString method READ method NOTIFY statusChanged)
     Q_PROPERTY(QString network READ network NOTIFY networkChanged)
     Q_PROPERTY(QString logs READ logs NOTIFY logsChanged)
+    Q_PROPERTY(bool dnsCloudflare READ dnsCloudflare NOTIFY statusChanged)
 public:
     explicit Backend(QObject *parent = nullptr);
     bool active() const { return m_active; }
@@ -23,6 +24,7 @@ public:
     QString method() const { return m_method; }
     QString network() const { return m_network; }
     QString logs() const { return m_logs; }
+    bool dnsCloudflare() const { return m_dnsCloudflare; }
 
     Q_INVOKABLE void start(const QString &profile);
     Q_INVOKABLE void stop();
@@ -31,6 +33,7 @@ public:
     Q_INVOKABLE void autoSelect();
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void setAutostart(bool enabled);
+    Q_INVOKABLE void setDns(bool cloudflare);
 
 signals:
     void statusChanged();
@@ -45,6 +48,7 @@ private:
     void appendLog(const QString &line);
     bool m_active = false;
     bool m_busy = false;
+    bool m_dnsCloudflare = false;
     QString m_profile = QStringLiteral("none");
     QString m_message = QStringLiteral("Durum bekleniyor");
     QString m_method = QStringLiteral("none");

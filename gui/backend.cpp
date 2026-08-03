@@ -42,7 +42,7 @@ void Backend::privileged(const QStringList &arguments) {
 }
 
 void Backend::start(const QString &profile) {
-    static const QStringList allowed{QStringLiteral("safe"), QStringLiteral("balanced"), QStringLiteral("discord"), QStringLiteral("aggressive")};
+    static const QStringList allowed{QStringLiteral("safe"), QStringLiteral("balanced"), QStringLiteral("discord"), QStringLiteral("roblox"), QStringLiteral("general"), QStringLiteral("aggressive")};
     if (!allowed.contains(profile)) { emit operationFailed(tr("Geçersiz profil")); return; }
     privileged({QStringLiteral("start"), profile});
 }
@@ -61,6 +61,10 @@ void Backend::setAutostart(bool enabled) {
     m_busy = true; emit busyChanged();
     const QString verb = enabled ? QStringLiteral("enable") : QStringLiteral("disable");
     m_process.start(QStringLiteral("/usr/bin/pkexec"), {QStringLiteral("/usr/bin/systemctl"), verb, QStringLiteral("turkdpi.service")});
+}
+
+void Backend::setDns(bool cloudflare) {
+    privileged({QStringLiteral("set-dns"), cloudflare ? QStringLiteral("cloudflare") : QStringLiteral("automatic")});
 }
 
 void Backend::refreshNetwork() {
@@ -84,6 +88,7 @@ void Backend::refresh() {
         m_profile = object.value(QStringLiteral("profile")).toString(QStringLiteral("none"));
         m_method = object.value(QStringLiteral("method")).toString(QStringLiteral("none"));
         m_message = object.value(QStringLiteral("message")).toString();
+        m_dnsCloudflare = object.value(QStringLiteral("dns_cloudflare")).toBool();
         emit statusChanged();
     }
     refreshNetwork();

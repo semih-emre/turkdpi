@@ -1,10 +1,10 @@
 # Maintainer: TurkDPI contributors
 pkgname=turkdpi
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
-pkgdesc='CachyOS/KDE için Discord odaklı yerel DPI dayanıklılığı yöneticisi'
+pkgdesc='CachyOS/KDE için Discord, Roblox ve web odaklı yerel DPI dayanıklılığı yöneticisi'
 arch=('x86_64')
-url='https://github.com/bol-van/zapret'
+url='https://github.com/semih-emre/turkdpi'
 license=('MIT')
 depends=('curl' 'libmnl' 'libnetfilter_queue' 'libnfnetlink' 'networkmanager' 'nftables' 'polkit' 'qt6-base' 'qt6-declarative' 'zlib-ng-compat')
 makedepends=('cargo' 'cmake' 'git' 'ninja' 'rust')
@@ -35,8 +35,8 @@ package() {
   install -Dm755 scripts/90-turkdpi "${pkgdir}/etc/NetworkManager/dispatcher.d/90-turkdpi"
   install -Dm755 scripts/turkdpi-sleep "${pkgdir}/usr/lib/systemd/system-sleep/turkdpi"
   install -Dm644 profiles/*.toml -t "${pkgdir}/usr/share/turkdpi/profiles"
-  install -Dm644 profiles/discord-hosts.txt "${pkgdir}/usr/share/turkdpi/discord-hosts.txt"
+  install -Dm644 profiles/*.txt -t "${pkgdir}/usr/share/turkdpi"
   install -Dm644 README.md "${pkgdir}/usr/share/doc/turkdpi/README.md"
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/turkdpi/LICENSE"
-  install -Dm644 "${srcdir}/zapret/LICENSE.txt" "${pkgdir}/usr/share/licenses/turkdpi/LICENSE.zapret"
+  install -Dm644 "${srcdir}/zapret/docs/LICENSE.txt" "${pkgdir}/usr/share/licenses/turkdpi/LICENSE.zapret"
 }
