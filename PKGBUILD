@@ -1,6 +1,6 @@
 # Maintainer: TurkDPI contributors
 pkgname=turkdpi
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc='Linux için Discord, Roblox ve web odaklı yerel DPI dayanıklılığı yöneticisi'
 arch=('x86_64' 'aarch64')
