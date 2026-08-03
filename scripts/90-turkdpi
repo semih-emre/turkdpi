@@ -4,6 +4,10 @@ set -euo pipefail
 interface_name=${1-}
 event_name=${2-}
 
+if [[ -e /var/lib/turkdpi/dispatcher-stop ]]; then
+  exit 0
+fi
+
 case "$event_name" in
   up|dhcp4-change|dhcp6-change)
     if /usr/bin/systemctl is-enabled --quiet turkdpi.service; then
@@ -38,7 +42,10 @@ case "$event_name" in
     fi
     ;;
   down)
-    /usr/bin/systemctl try-stop turkdpi.service
+    # Mevcut nfqws kuralları bağlantı yeniden gelene kadar güvenle bekleyebilir.
+    # Servisi burada durdurmak DNS geri yükleme olayının yeni bir start kuyruğa
+    # almasına ve manuel systemctl stop işleminin bozulmasına neden olur.
+    :
     ;;
 esac
 
