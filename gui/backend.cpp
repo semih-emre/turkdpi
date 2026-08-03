@@ -7,6 +7,7 @@
 #include <QDateTime>
 #include <QCoreApplication>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
@@ -157,10 +158,20 @@ void Backend::installUpdate() {
         emit operationFailed(tr("Kurulabilir bir güncelleme yok"));
         return;
     }
-    const bool started = QProcess::startDetached(
-        QStringLiteral("/usr/bin/konsole"),
-        {QStringLiteral("--hold"), QStringLiteral("-e"),
-         QStringLiteral("/usr/lib/turkdpi/turkdpi-update"), m_latestVersion});
+    QString terminal;
+    QStringList arguments;
+    if (QFileInfo::isExecutable(QStringLiteral("/usr/bin/konsole"))) {
+        terminal = QStringLiteral("/usr/bin/konsole");
+        arguments = {QStringLiteral("--hold"), QStringLiteral("-e")};
+    } else if (QFileInfo::isExecutable(QStringLiteral("/usr/bin/x-terminal-emulator"))) {
+        terminal = QStringLiteral("/usr/bin/x-terminal-emulator");
+        arguments = {QStringLiteral("-e")};
+    } else {
+        emit operationFailed(tr("Terminal uygulaması bulunamadı. /usr/lib/turkdpi/turkdpi-update %1 komutunu çalıştırın.").arg(m_latestVersion));
+        return;
+    }
+    arguments << QStringLiteral("/usr/lib/turkdpi/turkdpi-update") << m_latestVersion;
+    const bool started = QProcess::startDetached(terminal, arguments);
     if (!started) emit operationFailed(tr("Güncelleme terminali başlatılamadı"));
 }
 

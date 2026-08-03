@@ -1,12 +1,12 @@
 # Maintainer: TurkDPI contributors
 pkgname=turkdpi
-pkgver=0.3.0
+pkgver=0.4.0
 pkgrel=1
-pkgdesc='CachyOS/KDE için Discord, Roblox ve web odaklı yerel DPI dayanıklılığı yöneticisi'
-arch=('x86_64')
+pkgdesc='Linux için Discord, Roblox ve web odaklı yerel DPI dayanıklılığı yöneticisi'
+arch=('x86_64' 'aarch64')
 url='https://github.com/semih-emre/turkdpi'
 license=('MIT')
-depends=('curl' 'konsole' 'libmnl' 'libnetfilter_queue' 'libnfnetlink' 'networkmanager' 'nftables' 'polkit' 'qt6-base' 'qt6-declarative' 'zlib-ng-compat')
+depends=('curl' 'konsole' 'libmnl' 'libnetfilter_queue' 'libnfnetlink' 'networkmanager' 'nftables' 'polkit' 'qt6-base' 'qt6-declarative' 'zlib')
 makedepends=('cargo' 'cmake' 'git' 'ninja' 'rust')
 source=("${pkgname}-${pkgver}.tar.gz"
         'zapret::git+https://github.com/bol-van/zapret.git#commit=f0b0d89f02f44bb047fbfde5d96e9a1fc38e46f0')

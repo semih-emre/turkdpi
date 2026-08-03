@@ -1,10 +1,18 @@
-# TurkDPI 0.3.0
+# TurkDPI 0.4.0
 
-TurkDPI, CachyOS x86_64 ve KDE Plasma için Discord, Roblox ve genel web erişimine odaklanan bir `nfqws` yöneticisidir. VPN değildir; trafiği uzak bir sunucuya taşımaz, TLS çözmez, telemetri toplamaz ve kullanıcı trafiğini kaydetmez.
+TurkDPI; CachyOS x86_64/KDE Plasma ile Debian 13 ve Raspberry Pi OS ARM64 üzerinde Discord, Roblox ve genel web erişimine odaklanan bir `nfqws` yöneticisidir. VPN değildir; trafiği uzak bir sunucuya taşımaz, TLS çözmez, telemetri toplamaz ve kullanıcı trafiğini kaydetmez.
 
 > Bu yazılım ağ paketlerinin aktarım biçimini ve seçildiğinde NetworkManager DNS ayarını değiştirir. Yerel mevzuata ve kullandığınız hizmetlerin koşullarına uygun kullanmak sizin sorumluluğunuzdadır.
 
-## 0.3.0 yenilikleri
+## 0.4.0 yenilikleri
+
+- Raspberry Pi 5 ARM64 ve Debian 13 için yerel `.deb` paket üretimi.
+- Zapret/nfqws motorunu sabitlenmiş commit’ten ARM64 üzerinde otomatik derleme.
+- Arch/CachyOS ve Debian/Raspberry Pi OS arasında çalışan ortak uygulama içi güncelleyici.
+- Debian’daki `/usr/sbin/nft` yolu ve KDE dışındaki `x-terminal-emulator` desteği.
+- Arch paketinde `aarch64` mimarisi ve dağıtımlar arası `zlib` sanal bağımlılığı.
+
+### 0.3.0 ile eklenenler
 
 - Açılışta ve altı saatte bir GitHub üzerinden sürüm denetimi, KDE masaüstü bildirimi ve uygulama içi **Güncelle** düğmesi.
 - Güncelleme kaynak kodunu normal kullanıcı hesabında derler; yalnızca oluşan paketin kurulumu Polkit onayı ister.
@@ -42,6 +50,34 @@ Alan adına göre filtreleme TLS SNI/HTTP Host ve QUIC Initial aşamasında yap�
 
 Her ağ değişikliğinde NetworkManager dispatcher etkin systemd servisini yeniden başlatır. Otomatik profil sonucu bağlantı UUID’siyle `/var/lib/turkdpi/networks/` altında saklanır. DNS yedeği `/var/lib/turkdpi/dns-backups/` altında kip `0600` ile tutulur.
 
+## Raspberry Pi 5 / Debian 13 kurulumu
+
+Raspberry Pi OS 64-bit veya Debian 13 ARM64 üzerinde:
+
+```bash
+sudo apt update
+sudo apt install --no-install-recommends build-essential cargo cmake dpkg-dev git \
+  libmnl-dev libnetfilter-queue-dev libnfnetlink-dev network-manager ninja-build \
+  nftables pkexec qt6-base-dev qt6-declarative-dev qt6-qpa-plugins \
+  qml6-module-qtqml-workerscript qml6-module-qtquick \
+  qml6-module-qtquick-controls qml6-module-qtquick-layouts zlib1g-dev
+
+git clone https://github.com/semih-emre/turkdpi.git
+cd turkdpi
+./scripts/build-deb.sh
+sudo apt install ./build/deb/turkdpi_0.4.0_arm64.deb
+```
+
+Grafik masaüstü olmayan Pi kurulumunda servis ve komut satırı aracı kullanılabilir:
+
+```bash
+sudo turkdpi-service start discord
+sudo turkdpi-service status
+sudo turkdpi-service cleanup
+```
+
+Qt arayüzü için çalışan bir Wayland/X11 oturumu gerekir. Paket, grafik oturumu olmasa da derlenebilir ve servis olarak çalışabilir.
+
 ## CachyOS kurulumu
 
 ```bash
@@ -56,7 +92,7 @@ Kaynak deposundan paket oluşturma:
 ```bash
 git clone https://github.com/semih-emre/turkdpi.git
 cd turkdpi
-git archive --prefix=turkdpi-0.3.0/ -o turkdpi-0.3.0.tar.gz HEAD
+git archive --prefix=turkdpi-0.4.0/ -o turkdpi-0.4.0.tar.gz HEAD
 makepkg -Csi
 ```
 
@@ -67,7 +103,7 @@ Mevcut kurulumdan güncelleme:
 ```bash
 cd turkdpi
 git pull --ff-only
-git archive --prefix=turkdpi-0.3.0/ -o turkdpi-0.3.0.tar.gz HEAD
+git archive --prefix=turkdpi-0.4.0/ -o turkdpi-0.4.0.tar.gz HEAD
 makepkg -Csi
 ```
 
@@ -81,7 +117,7 @@ Bir profil başlatıldığında Cloudflare DNS varsayılan olarak etkinleşir. G
 
 ### Uygulama içinden güncelleme
 
-TurkDPI açıldıktan kısa süre sonra ve uygulama açık kaldığı sürece altı saatte bir `version.json` dosyasını projenin GitHub `main` dalından denetler. Daha yeni bir sürüm varsa KDE bildirimi gösterilir ve **Güncelle** düğmesi etkinleşir. Düğme Konsole’u açar, HTTPS ile kaynak kodunu indirir, bildirilen sürüm ile kaynağın sürümünü karşılaştırır ve paketi normal kullanıcı hesabında derler. Yalnızca son `pacman -U` adımı Polkit onayı ister.
+TurkDPI açıldıktan kısa süre sonra ve uygulama açık kaldığı sürece altı saatte bir `version.json` dosyasını projenin GitHub `main` dalından denetler. Daha yeni bir sürüm varsa masaüstü bildirimi gösterilir ve **Güncelle** düğmesi etkinleşir. Düğme Konsole veya sistemin varsayılan terminalini açar, HTTPS ile kaynak kodunu indirir, bildirilen sürüm ile kaynağın sürümünü karşılaştırır ve paketi normal kullanıcı hesabında derler. CachyOS’ta `pacman`, Debian/Raspberry Pi OS’ta `apt` ile yapılan son kurulum adımı Polkit onayı ister.
 
 Güncelleme bittikten sonra uygulamayı kapatıp yeniden açın. Denetim başarısız olursa mevcut sürüm çalışmaya devam eder; arayüzde hata açıklaması gösterilir.
 
@@ -131,7 +167,8 @@ Hiçbir zaman `nft flush ruleset` çalıştırmayın. Her ağ kuralı değişikl
 - Roblox oyun trafiği dinamik UDP portu ve IP kullanır. Roblox profili `49152–65535/UDP` aralığındaki tanınmayan ilk paketleri işler ve aynı aralıktaki başka uygulamaları etkileyebilir.
 - Agresif profil bilinmeyen UDP trafiğine de müdahale eder; yalnız son seçenek olarak kullanılmalıdır.
 - Cloudflare DNS captive portal kullanan halka açık Wi‑Fi ağlarında giriş sayfasını engelleyebilir. Bu durumda DNS kutusunu kapatın.
-- Linux çekirdeği, systemd, Polkit, NetworkManager ve nftables canlı testi bir CachyOS makinesinde yapılmalıdır.
+- Raspberry Pi OS Lite gibi grafik oturumu olmayan sistemlerde Qt arayüzü açılamaz; servis ve CLI kullanılabilir.
+- Raspberry Pi’de Discord/Roblox istemcisi çalışmıyorsa gerçek uygulama trafiğinin uçtan uca testi aynı ağdaki istemci cihazdan yapılmalıdır.
 
 ## Doğrulama
 
@@ -143,6 +180,7 @@ cmake -S gui -B build/gui -G Ninja
 cmake --build build/gui
 shellcheck scripts/*.sh scripts/90-turkdpi scripts/turkdpi-sleep
 namcap PKGBUILD
+scripts/build-deb.sh
 ```
 
 Canlı ağ testi öncesinde ayrıca `sudo nft -j list ruleset > nft-before.json` ile elle yedek alın.

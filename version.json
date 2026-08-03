@@ -1,4 +1,4 @@
 {
-  "version": "0.3.0",
-  "notes": "Discord otomatik testi iyileştirildi; uygulama içi güncelleme denetimi ve KDE bildirimi eklendi."
+  "version": "0.4.0",
+  "notes": "Raspberry Pi 5/ARM64 ve Debian paket desteği, dağıtımlar arası güncelleyici ve canlı Pi doğrulamaları eklendi."
 }

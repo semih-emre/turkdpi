@@ -17,7 +17,12 @@ table inet turkdpi {
 "#;
 
 fn run_nft(args: &[&str], stdin: Option<&[u8]>) -> Result<std::process::Output> {
-    let mut child = Command::new("/usr/bin/nft")
+    let nft = if Path::new("/usr/sbin/nft").is_file() {
+        "/usr/sbin/nft"
+    } else {
+        "/usr/bin/nft"
+    };
+    let mut child = Command::new(nft)
         .args(args)
         .stdin(if stdin.is_some() {
             Stdio::piped()
