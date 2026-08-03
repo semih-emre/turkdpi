@@ -8,10 +8,14 @@ use std::process::{Command, Stdio};
 
 const RULESET: &str = r#"
 table inet turkdpi {
-  chain output {
-    type filter hook output priority mangle; policy accept;
-    meta l4proto tcp tcp dport { 80, 443 } queue num 200 bypass
-    oifname != "lo" meta l4proto udp udp dport { 1-52, 54-66, 69-122, 124-545, 548-65535 } queue num 201 bypass
+  chain postrouting {
+    type filter hook postrouting priority 102; policy accept;
+    meta mark & 0x40000000 == 0 meta l4proto tcp tcp dport { 80, 443 } queue num 200 bypass
+    meta mark & 0x40000000 == 0 oifname != "lo" meta l4proto udp udp dport { 1-52, 54-66, 69-122, 124-545, 548-65535 } queue num 201 bypass
+  }
+  chain prerouting {
+    type filter hook prerouting priority -102; policy accept;
+    meta l4proto tcp tcp sport { 80, 443 } tcp flags & (syn | ack) == (syn | ack) queue num 200 bypass
   }
 }
 "#;

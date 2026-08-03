@@ -64,6 +64,7 @@ fn engine_command(queue: u16, profile: &Profile, udp: bool) -> Command {
     let mut cmd = Command::new(NFQWS);
     cmd.arg(format!("--qnum={queue}"))
         .arg("--user=nobody")
+        .arg("--dpi-desync-fwmark=0x40000000")
         .arg("--debug=syslog");
     for arg in if udp {
         &profile.udp_args
