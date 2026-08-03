@@ -160,10 +160,10 @@ void Backend::installUpdate() {
     }
     QString terminal;
     QStringList arguments;
-    if (QFileInfo::isExecutable(QStringLiteral("/usr/bin/konsole"))) {
+    if (QFileInfo(QStringLiteral("/usr/bin/konsole")).isExecutable()) {
         terminal = QStringLiteral("/usr/bin/konsole");
         arguments = {QStringLiteral("--hold"), QStringLiteral("-e")};
-    } else if (QFileInfo::isExecutable(QStringLiteral("/usr/bin/x-terminal-emulator"))) {
+    } else if (QFileInfo(QStringLiteral("/usr/bin/x-terminal-emulator")).isExecutable()) {
         terminal = QStringLiteral("/usr/bin/x-terminal-emulator");
         arguments = {QStringLiteral("-e")};
     } else {
