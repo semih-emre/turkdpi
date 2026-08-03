@@ -20,8 +20,10 @@ Gerekli geliştirme paketleri:
 
 ```bash
 sudo pacman -S --needed base-devel cargo cmake git ninja rust qt6-base qt6-declarative \
-  networkmanager nftables polkit curl libnetfilter_queue libnfnetlink libmnl zlib
+  networkmanager nftables polkit curl libnetfilter_queue libnfnetlink libmnl zlib-ng-compat
 ```
+
+CachyOS, klasik `zlib` yerine onunla uyumlu ve optimize edilmiş `zlib-ng-compat` paketini kullanır. Pacman `zlib-ng-compat` paketini kaldırmayı önerirse işlemi iptal edin; özellikle `lib32-zlib-ng-compat` kurulu sistemlerde klasik `zlib` paketine geçmeyin.
 
 Yerel kaynak arşivini PKGBUILD'in beklediği adla oluşturup paketi kurun:
 
