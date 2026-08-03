@@ -34,7 +34,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             build-essential cargo cmake git ninja-build pkg-config shellcheck \
-            libmnl-dev libnetfilter-queue-dev libnfnetlink-dev zlib1g-dev \
+            libcap-dev libmnl-dev libnetfilter-queue-dev libnfnetlink-dev zlib1g-dev \
             qt6-base-dev qt6-declarative-dev
 
       - name: Kaynak testlerini çalıştır
