@@ -1,3 +1,4 @@
+mod dns;
 mod nft;
 mod profile;
 
@@ -6,7 +7,7 @@ use profile::{Profile, ProfileName};
 use serde::Serialize;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::net::{TcpStream, ToSocketAddrs, UdpSocket};
+use std::net::{ToSocketAddrs, UdpSocket};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -23,6 +24,7 @@ struct Status<'a> {
     profile: &'a str,
     method: &'a str,
     message: &'a str,
+    dns_cloudflare: bool,
 }
 
 fn require_root() -> Result<()> {
@@ -58,14 +60,12 @@ fn load_profile(name: ProfileName) -> Result<Profile> {
     Ok(parsed)
 }
 
-fn spawn_engine(queue: u16, profile: &Profile, udp: bool) -> Result<u32> {
+fn engine_command(queue: u16, profile: &Profile, udp: bool) -> Command {
     let mut cmd = Command::new(NFQWS);
     cmd.arg(format!("--qnum={queue}"))
         .arg("--user=nobody")
-        .arg("--debug=syslog")
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
+        .arg("--dpi-desync-fwmark=0x40000000")
+        .arg("--debug=syslog");
     for arg in if udp {
         &profile.udp_args
     } else {
@@ -74,8 +74,32 @@ fn spawn_engine(queue: u16, profile: &Profile, udp: bool) -> Result<u32> {
         cmd.arg(arg);
     }
     if !udp {
-        cmd.arg(format!("--hostlist={}", profile.hostlist));
+        if let Some(hostlist) = &profile.hostlist {
+            cmd.arg(format!("--hostlist={hostlist}"));
+        }
     }
+    cmd
+}
+
+fn validate_engine(queue: u16, profile: &Profile, udp: bool) -> Result<()> {
+    let output = engine_command(queue, profile, udp)
+        .arg("--dry-run")
+        .output()
+        .context("nfqws profil doğrulaması çalıştırılamadı")?;
+    if !output.status.success() {
+        bail!(
+            "nfqws profil doğrulaması başarısız: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    Ok(())
+}
+
+fn spawn_engine(queue: u16, profile: &Profile, udp: bool) -> Result<u32> {
+    let mut cmd = engine_command(queue, profile, udp);
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
     let mut child = cmd.spawn().context("nfqws başlatılamadı")?;
     std::thread::sleep(Duration::from_millis(150));
     if let Some(status) = child.try_wait()? {
@@ -90,14 +114,21 @@ fn pid_file() -> PathBuf {
 
 fn start(name: ProfileName) -> Result<()> {
     require_root()?;
-    nft::backup_ruleset(Path::new(STATE_DIR))?;
-    cleanup_inner()?;
     let profile = load_profile(name)?;
-    nft::apply()?;
+    validate_engine(200, &profile, false)?;
+    validate_engine(201, &profile, true)?;
+    nft::backup_ruleset(Path::new(STATE_DIR))?;
+    cleanup_inner(false)?;
+    let dns_message = dns::apply_cloudflare(Path::new(STATE_DIR))?;
+    if let Err(error) = nft::apply() {
+        let _ = dns::restore(Path::new(STATE_DIR));
+        return Err(error);
+    }
     let tcp_pid = match spawn_engine(200, &profile, false) {
         Ok(pid) => pid,
         Err(error) => {
             let _ = nft::cleanup();
+            let _ = dns::restore(Path::new(STATE_DIR));
             return Err(error);
         }
     };
@@ -108,15 +139,18 @@ fn start(name: ProfileName) -> Result<()> {
                 libc::kill(tcp_pid as i32, libc::SIGTERM);
             }
             let _ = nft::cleanup();
+            let _ = dns::restore(Path::new(STATE_DIR));
             return Err(error);
         }
     };
     fs::write(pid_file(), format!("{tcp_pid}\n{udp_pid}\n"))?;
+    let message = format!("{dns_message}; nfqws ve turkdpi nftables tablosu etkin");
     atomic_status(&Status {
         active: true,
         profile: name.as_str(),
         method: &profile.description,
-        message: "nfqws ve turkdpi nftables tablosu etkin",
+        message: &message,
+        dns_cloudflare: dns::is_cloudflare_active(Path::new(STATE_DIR)),
     })
 }
 
@@ -131,7 +165,7 @@ fn stop_pid(pid: i32) {
     }
 }
 
-fn cleanup_inner() -> Result<()> {
+fn cleanup_inner(restore_dns: bool) -> Result<()> {
     let mut pids = Vec::new();
     if let Ok(raw) = fs::read_to_string(pid_file()) {
         for line in raw.lines() {
@@ -151,87 +185,70 @@ fn cleanup_inner() -> Result<()> {
         }
     }
     let _ = fs::remove_file(pid_file());
-    nft::cleanup()?;
+    let nft_result = nft::cleanup();
+    let dns_result = if restore_dns {
+        dns::restore(Path::new(STATE_DIR))
+    } else {
+        Ok("DNS ayarı korundu".to_owned())
+    };
+    nft_result?;
+    let dns_message = dns_result?;
     atomic_status(&Status {
         active: false,
         profile: "none",
         method: "none",
-        message: "turkdpi kuralları temizlendi",
+        message: &dns_message,
+        dns_cloudflare: !restore_dns && dns::is_cloudflare_active(Path::new(STATE_DIR)),
     })
 }
 
 fn cleanup() -> Result<()> {
     require_root()?;
     nft::backup_ruleset(Path::new(STATE_DIR))?;
-    cleanup_inner()
+    cleanup_inner(true)
 }
 
 fn active_network_uuid() -> Option<String> {
-    let out = Command::new("/usr/bin/nmcli")
-        .args(["-g", "UUID", "connection", "show", "--active"])
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
-    }
-    let uuid = String::from_utf8(out.stdout)
-        .ok()?
-        .lines()
-        .next()?
-        .trim()
-        .to_owned();
-    if uuid.len() == 36 && uuid.chars().all(|c| c.is_ascii_hexdigit() || c == '-') {
-        Some(uuid)
-    } else {
-        None
-    }
+    dns::active_connection()
+        .ok()
+        .map(|connection| connection.uuid)
 }
 
 fn connectivity_test() -> Result<String> {
-    let timeout = Duration::from_secs(5);
-    let dns = ("discord.com", 443)
+    ("discord.com", 443)
         .to_socket_addrs()?
         .next()
         .context("Discord DNS yanıtı yok")?;
-    TcpStream::connect_timeout(&dns, timeout).context("Discord HTTPS TCP bağlantısı başarısız")?;
-    let gateway = ("gateway.discord.gg", 443)
-        .to_socket_addrs()?
-        .next()
-        .context("Gateway DNS yanıtı yok")?;
-    TcpStream::connect_timeout(&gateway, timeout)
-        .context("Discord Gateway TCP bağlantısı başarısız")?;
-    for url in ["https://discord.com/", "https://discord.com/api/gateway"] {
-        let result = Command::new("/usr/bin/curl")
-            .args([
-                "--fail",
-                "--silent",
-                "--show-error",
-                "--max-time",
-                "8",
-                "--output",
-                "/dev/null",
-                url,
-            ])
-            .output()
-            .context("curl çalıştırılamadı")?;
-        if !result.status.success() {
-            bail!(
-                "HTTPS testi başarısız: {}",
-                String::from_utf8_lossy(&result.stderr)
-            );
-        }
+    let result = Command::new("/usr/bin/curl")
+        .args([
+            "--fail",
+            "--silent",
+            "--show-error",
+            "--connect-timeout",
+            "5",
+            "--max-time",
+            "10",
+            "--output",
+            "/dev/null",
+            "https://discord.com/api/v10/gateway",
+        ])
+        .output()
+        .context("curl çalıştırılamadı")?;
+    if !result.status.success() {
+        bail!(
+            "Discord Gateway HTTPS testi başarısız: {}",
+            String::from_utf8_lossy(&result.stderr).trim()
+        );
     }
     let udp = UdpSocket::bind("0.0.0.0:0")?;
     udp.connect("1.1.1.1:443")?;
     udp.send(&[0u8])?;
-    Ok(
-        "Discord DNS/HTTPS ve Gateway TCP başarılı; UDP gönderimi mümkün (yanıt doğrulanmadı)"
-            .into(),
-    )
+    Ok("Discord Gateway HTTPS başarılı; UDP gönderimi mümkün (RTC yanıtı doğrulanmadı)".into())
 }
 
 fn auto_test() -> Result<()> {
     require_root()?;
+    let mut failures = Vec::new();
     let network_uuid = active_network_uuid();
     if let Some(uuid) = &network_uuid {
         let saved = Path::new(STATE_DIR)
@@ -241,8 +258,11 @@ fn auto_test() -> Result<()> {
             if let Ok(candidate) = name.trim().parse::<ProfileName>() {
                 start(candidate)?;
                 std::thread::sleep(Duration::from_millis(800));
-                if connectivity_test().is_ok() {
-                    return Ok(());
+                match connectivity_test() {
+                    Ok(_) => return Ok(()),
+                    Err(error) => {
+                        failures.push(format!("kayıtlı {}: {error:#}", candidate.as_str()))
+                    }
                 }
             }
         }
@@ -255,28 +275,35 @@ fn auto_test() -> Result<()> {
     ] {
         start(candidate)?;
         std::thread::sleep(Duration::from_millis(800));
-        if let Ok(message) = connectivity_test() {
-            fs::create_dir_all(STATE_DIR)?;
-            fs::write(
-                Path::new(STATE_DIR).join("selected-profile"),
-                candidate.as_str(),
-            )?;
-            if let Some(uuid) = &network_uuid {
-                let dir = Path::new(STATE_DIR).join("networks");
-                fs::create_dir_all(&dir)?;
-                fs::write(dir.join(format!("{uuid}.profile")), candidate.as_str())?;
+        match connectivity_test() {
+            Ok(message) => {
+                fs::create_dir_all(STATE_DIR)?;
+                fs::write(
+                    Path::new(STATE_DIR).join("selected-profile"),
+                    candidate.as_str(),
+                )?;
+                if let Some(uuid) = &network_uuid {
+                    let dir = Path::new(STATE_DIR).join("networks");
+                    fs::create_dir_all(&dir)?;
+                    fs::write(dir.join(format!("{uuid}.profile")), candidate.as_str())?;
+                }
+                atomic_status(&Status {
+                    active: true,
+                    profile: candidate.as_str(),
+                    method: "otomatik seçildi",
+                    message: &message,
+                    dns_cloudflare: dns::is_cloudflare_active(Path::new(STATE_DIR)),
+                })?;
+                return Ok(());
             }
-            atomic_status(&Status {
-                active: true,
-                profile: candidate.as_str(),
-                method: "otomatik seçildi",
-                message: &message,
-            })?;
-            return Ok(());
+            Err(error) => failures.push(format!("{}: {error:#}", candidate.as_str())),
         }
     }
-    cleanup_inner()?;
-    bail!("hiçbir profil bağlantı testini geçemedi")
+    cleanup_inner(true)?;
+    bail!(
+        "hiçbir profil bağlantı testini geçemedi: {}",
+        failures.join(" | ")
+    )
 }
 
 fn status() -> Result<()> {
@@ -284,7 +311,7 @@ fn status() -> Result<()> {
     if path.exists() {
         print!("{}", fs::read_to_string(path)?);
     } else {
-        println!("{{\"active\":false,\"profile\":\"none\",\"method\":\"none\",\"message\":\"henüz çalıştırılmadı\"}}");
+        println!("{{\"active\":false,\"profile\":\"none\",\"method\":\"none\",\"message\":\"henüz çalıştırılmadı\",\"dns_cloudflare\":false}}");
     }
     Ok(())
 }
@@ -293,6 +320,40 @@ fn set_profile(name: ProfileName) -> Result<()> {
     require_root()?;
     fs::create_dir_all(STATE_DIR)?;
     fs::write(Path::new(STATE_DIR).join("selected-profile"), name.as_str())?;
+    Ok(())
+}
+
+fn set_dns(mode: &str) -> Result<()> {
+    require_root()?;
+    let message = match mode {
+        "cloudflare" => dns::apply_cloudflare(Path::new(STATE_DIR))?,
+        "automatic" => dns::restore(Path::new(STATE_DIR))?,
+        _ => bail!("izin verilmeyen DNS şablonu"),
+    };
+    let current = fs::read_to_string(Path::new(RUN_DIR).join("status.json"))
+        .ok()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .unwrap_or_default();
+    let active = current
+        .get("active")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false);
+    let profile = current
+        .get("profile")
+        .and_then(|value| value.as_str())
+        .unwrap_or("none");
+    let method = current
+        .get("method")
+        .and_then(|value| value.as_str())
+        .unwrap_or("none");
+    atomic_status(&Status {
+        active,
+        profile,
+        method,
+        message: &message,
+        dns_cloudflare: dns::is_cloudflare_active(Path::new(STATE_DIR)),
+    })?;
+    println!("{message}");
     Ok(())
 }
 
@@ -305,6 +366,7 @@ fn main() -> Result<()> {
         [cmd] if cmd == "auto" => auto_test(),
         [cmd, name] if cmd == "start" => start(name.parse()?),
         [cmd, name] if cmd == "set-profile" => set_profile(name.parse()?),
-        _ => bail!("kullanım: turkdpi-service start <safe|balanced|discord|aggressive> | stop | test | auto | cleanup | status | set-profile <profil>"),
+        [cmd, mode] if cmd == "set-dns" => set_dns(mode),
+        _ => bail!("kullanım: turkdpi-service start <safe|balanced|discord|roblox|general|aggressive> | stop | test | auto | cleanup | status | set-profile <profil> | set-dns <cloudflare|automatic>"),
     }
 }

@@ -1,5 +1,5 @@
 name = "balanced"
-description = "Discord için TLS split + çoklu fake desync"
-hostlist = "/usr/share/turkdpi/discord-hosts.txt"
-tcp_args = ["--filter-tcp=80,443", "--dpi-desync=fake,multisplit", "--dpi-desync-split-pos=1,midsld", "--dpi-desync-repeats=5"]
-udp_args = ["--filter-udp=443,50000-65535", "--dpi-desync=fake", "--dpi-desync-repeats=5"]
+description = "Discord ve Roblox için dengeli TLS/QUIC ve RTC desync"
+hostlist = "/usr/share/turkdpi/services-hosts.txt"
+tcp_args = ["--filter-tcp=80,443", "--filter-l7=http,tls", "--dpi-desync=fake", "--dpi-desync-ttl=3"]
+udp_args = ["--filter-udp=*", "--filter-l7=discord,stun", "--dpi-desync=fake", "--dpi-desync-repeats=6", "--dpi-desync-cutoff=n6", "--new", "--filter-udp=443", "--filter-l7=quic", "--hostlist=/usr/share/turkdpi/services-hosts.txt", "--dpi-desync=fake", "--dpi-desync-fooling=badsum", "--dpi-desync-repeats=4", "--dpi-desync-cutoff=n6"]

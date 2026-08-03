@@ -8,7 +8,10 @@ fi
 
 sudo /usr/bin/systemctl disable --now turkdpi.service 2>/dev/null || true
 if [[ -x /usr/bin/turkdpi-service ]]; then
-  sudo /usr/bin/turkdpi-service cleanup || true
+  if ! sudo /usr/bin/turkdpi-service cleanup; then
+    printf '%s\n' 'Ağ kuralları veya DNS geri yüklenemedi; kurtarma için yardımcı ikili korunuyor.' >&2
+    exit 1
+  fi
 fi
 sudo /usr/bin/rm -f -- /usr/bin/turkdpi-service /usr/bin/turkdpi-gui
 sudo /usr/bin/rm -f -- /usr/share/applications/turkdpi.desktop

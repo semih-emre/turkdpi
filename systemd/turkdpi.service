@@ -1,5 +1,5 @@
 [Unit]
-Description=TurkDPI Discord DPI resilience engine
+Description=TurkDPI local DPI resilience engine
 Documentation=file:/usr/share/doc/turkdpi/README.md
 After=network-online.target NetworkManager.service
 Wants=network-online.target
@@ -9,7 +9,7 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/bin/turkdpi-service auto
 ExecStop=/usr/bin/turkdpi-service cleanup
-TimeoutStartSec=90
+TimeoutStartSec=300
 TimeoutStopSec=20
 KillMode=control-group
 NoNewPrivileges=yes

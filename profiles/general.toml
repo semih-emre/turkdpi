@@ -1,0 +1,4 @@
+name = "general"
+description = "Tüm web siteleri için HTTP/TLS ve QUIC desync"
+tcp_args = ["--filter-tcp=80,443", "--filter-l7=http,tls", "--dpi-desync=fake", "--dpi-desync-ttl=3"]
+udp_args = ["--filter-udp=443", "--filter-l7=quic", "--dpi-desync=fake", "--dpi-desync-fooling=badsum", "--dpi-desync-repeats=4", "--dpi-desync-cutoff=n6"]

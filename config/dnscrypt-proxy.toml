@@ -1,0 +1,25 @@
+server_names = ['turkdpi-cloudflare-1', 'turkdpi-cloudflare-2']
+listen_addresses = ['127.0.3.1:53']
+max_clients = 250
+user_name = 'nobody'
+
+ipv4_servers = true
+ipv6_servers = false
+dnscrypt_servers = false
+doh_servers = true
+odoh_servers = false
+require_dnssec = false
+require_nolog = true
+require_nofilter = true
+force_tcp = true
+http3 = false
+ignore_system_dns = true
+cache = true
+cache_size = 4096
+log_level = 2
+
+[static.'turkdpi-cloudflare-1']
+stamp = 'sdns://AgcAAAAAAAAABzEuMC4wLjEAEmRucy5jbG91ZGZsYXJlLmNvbQovZG5zLXF1ZXJ5'
+
+[static.'turkdpi-cloudflare-2']
+stamp = 'sdns://AgcAAAAAAAAADDE2Mi4xNTkuMzYuMQAMMTYyLjE1OS4zNi4xCi9kbnMtcXVlcnk'
