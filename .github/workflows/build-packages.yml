@@ -42,6 +42,7 @@ jobs:
           cargo fmt --check
           cargo test
           cargo check
+          cargo build
           shellcheck scripts/*.sh scripts/90-turkdpi scripts/turkdpi-sleep
           sudo ln -sf "${PWD}/target/debug/turkdpi-service" /usr/bin/turkdpi-service
           systemd-analyze verify systemd/turkdpi.service
