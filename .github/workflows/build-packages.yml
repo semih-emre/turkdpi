@@ -43,6 +43,7 @@ jobs:
           cargo test
           cargo check
           shellcheck scripts/*.sh scripts/90-turkdpi scripts/turkdpi-sleep
+          sudo ln -sf "${PWD}/target/debug/turkdpi-service" /usr/bin/turkdpi-service
           systemd-analyze verify systemd/turkdpi.service
 
       - name: Debian paketini oluştur
