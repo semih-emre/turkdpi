@@ -82,6 +82,8 @@ GitHub Actions her `main` güncellemesinde iki ayrı yerel Linux derlemesi üret
 - `turkdpi-amd64`: Intel/AMD 64-bit Debian, Ubuntu ve uyumlu dağıtımlar.
 - `turkdpi-arm64`: Raspberry Pi 5 ve diğer ARM64 Debian tabanlı sistemler.
 
+Qt arayüzünün asgari sürümü, Ubuntu 24.04 ile uyumlu olacak şekilde Qt 6.4'tür.
+
 Paketler deponun **Actions → Linux paketlerini derle** sayfasındaki başarılı
 çalışmanın **Artifacts** bölümünden indirilebilir. Her pakette servis, Qt arayüzü
 ve `nfqws` dosyalarının hedef CPU mimarisi otomatik doğrulanır.
