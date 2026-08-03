@@ -238,10 +238,7 @@ fn connectivity_test() -> Result<String> {
     let udp = UdpSocket::bind("0.0.0.0:0")?;
     udp.connect("1.1.1.1:443")?;
     udp.send(&[0u8])?;
-    Ok(
-        "Discord Gateway HTTPS başarılı; UDP gönderimi mümkün (RTC yanıtı doğrulanmadı)"
-            .into(),
-    )
+    Ok("Discord Gateway HTTPS başarılı; UDP gönderimi mümkün (RTC yanıtı doğrulanmadı)".into())
 }
 
 fn auto_test() -> Result<()> {
@@ -258,7 +255,9 @@ fn auto_test() -> Result<()> {
                 std::thread::sleep(Duration::from_millis(800));
                 match connectivity_test() {
                     Ok(_) => return Ok(()),
-                    Err(error) => failures.push(format!("kayıtlı {}: {error:#}", candidate.as_str())),
+                    Err(error) => {
+                        failures.push(format!("kayıtlı {}: {error:#}", candidate.as_str()))
+                    }
                 }
             }
         }
@@ -296,7 +295,10 @@ fn auto_test() -> Result<()> {
         }
     }
     cleanup_inner()?;
-    bail!("hiçbir profil bağlantı testini geçemedi: {}", failures.join(" | "))
+    bail!(
+        "hiçbir profil bağlantı testini geçemedi: {}",
+        failures.join(" | ")
+    )
 }
 
 fn status() -> Result<()> {
