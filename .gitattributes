@@ -1,0 +1,10 @@
+* text=auto
+.gitattributes text eol=lf
+*.rs text eol=lf
+*.toml text eol=lf
+*.sh text eol=lf
+PKGBUILD text eol=lf
+scripts/90-turkdpi text eol=lf
+scripts/turkdpi-sleep text eol=lf
+*.service text eol=lf
+*.policy text eol=lf

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Türkiye DPI Yöneticisi
+Comment=Discord odaklı yerel DPI dayanıklılığı
+Exec=turkdpi-gui
+Icon=network-wired
+Categories=Network;Qt;
+Terminal=false

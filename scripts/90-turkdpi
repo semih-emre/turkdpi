@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+interface_name=${1-}
+event_name=${2-}
+
+case "$event_name" in
+  up|dhcp4-change|dhcp6-change|connectivity-change)
+    if /usr/bin/systemctl is-enabled --quiet turkdpi.service; then
+      /usr/bin/systemctl try-restart turkdpi.service
+    fi
+    ;;
+  down)
+    /usr/bin/systemctl try-stop turkdpi.service
+    ;;
+esac
+
+# NetworkManager supplies this value; it is deliberately never interpolated into a command.
+: "$interface_name"

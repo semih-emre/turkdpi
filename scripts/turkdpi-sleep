@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1-}" in
+  post)
+    if /usr/bin/systemctl is-enabled --quiet turkdpi.service; then
+      /usr/bin/systemctl try-restart turkdpi.service
+    fi
+    ;;
+esac
