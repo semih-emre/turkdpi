@@ -12,8 +12,8 @@ const NMCLI: &str = "/usr/bin/nmcli";
 const DNS_V4: &str = "1.1.1.1,1.0.0.1";
 const DNS_V6: &str = "2606:4700:4700::1111,2606:4700:4700::1001";
 const DNS_QUERY: &[u8] = &[
-    0x54, 0x44, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, b'e', b'x', b'a',
-    b'm', b'p', b'l', b'e', 0x03, b'c', b'o', b'm', 0x00, 0x00, 0x01, 0x00, 0x01,
+    0x54, 0x44, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, b'd', b'i', b's',
+    b'c', b'o', b'r', b'd', 0x03, b'c', b'o', b'm', 0x00, 0x00, 0x01, 0x00, 0x01,
 ];
 
 #[derive(Debug)]
@@ -115,7 +115,12 @@ fn cloudflare_dns_responds() -> bool {
         }
         let mut response = [0_u8; 512];
         if let Ok(length) = socket.recv(&mut response) {
-            if length >= 12 && response[0..2] == DNS_QUERY[0..2] && response[2] & 0x80 != 0 {
+            if length >= 12
+                && response[0..2] == DNS_QUERY[0..2]
+                && response[2] & 0x80 != 0
+                && response[3] & 0x0f == 0
+                && (response[6] != 0 || response[7] != 0)
+            {
                 return true;
             }
         }
@@ -125,7 +130,7 @@ fn cloudflare_dns_responds() -> bool {
 
 fn system_dns_responds() -> bool {
     for _ in 0..4 {
-        if ("cloudflare.com", 443)
+        if ("discord.com", 443)
             .to_socket_addrs()
             .ok()
             .and_then(|mut addresses| addresses.next())
