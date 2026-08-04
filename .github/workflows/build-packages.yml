@@ -90,3 +90,74 @@ jobs:
           path: build/deb/turkdpi_*_${{ matrix.architecture }}.deb
           if-no-files-found: error
           retention-days: 30
+
+  build-cachyos:
+    name: CachyOS x86_64 paketi
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    timeout-minutes: 30
+
+    steps:
+      - name: Kaynak kodunu al
+        uses: actions/checkout@v4
+
+      - name: Arch derleme bağımlılıklarını kur
+        run: |
+          pacman -Syu --noconfirm --needed \
+            cargo cmake git ninja rust qt6-base qt6-declarative \
+            libmnl libnetfilter_queue libnfnetlink zlib
+
+      - name: Kaynak testlerini çalıştır
+        run: |
+          cargo fmt --check
+          cargo test
+          cargo check
+
+      - name: CachyOS paketini oluştur
+        shell: bash
+        run: |
+          version=$(sed -nE 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"[,]?[[:space:]]*$/\1/p' version.json)
+          build_root=/tmp/turkdpi-cachyos-build
+          rm -rf "${build_root}"
+          mkdir -p "${build_root}"
+          archive="${build_root}/turkdpi-${version}.tar.gz"
+          tar --exclude='./.git' --exclude='./target' --exclude='./build' \
+            --exclude='./*.pkg.tar.zst' \
+            --transform="s,^\./,turkdpi-${version}/," \
+            -czf "${archive}" .
+          cp PKGBUILD "${build_root}/PKGBUILD"
+
+          useradd --create-home builder
+          chown -R builder:builder "${build_root}"
+          runuser -u builder -- bash -lc \
+            "cd '${build_root}' && makepkg --noconfirm --nodeps --cleanbuild --force"
+          cp "${build_root}"/turkdpi-*-x86_64.pkg.tar.zst .
+
+      - name: CachyOS paketini doğrula
+        shell: bash
+        run: |
+          package=$(find . -maxdepth 1 -type f -name 'turkdpi-*-x86_64.pkg.tar.zst' -print -quit)
+          test -n "${package}"
+          pacman -Qp "${package}"
+
+          rm -rf /tmp/turkdpi-package-check
+          mkdir -p /tmp/turkdpi-package-check
+          bsdtar -xf "${package}" -C /tmp/turkdpi-package-check
+          file /tmp/turkdpi-package-check/usr/bin/turkdpi-service | grep -F 'x86-64'
+          file /tmp/turkdpi-package-check/usr/bin/turkdpi-gui | grep -F 'x86-64'
+          file /tmp/turkdpi-package-check/usr/lib/turkdpi/nfqws | grep -F 'x86-64'
+
+          set +e
+          QT_QPA_PLATFORM=offscreen timeout 5s \
+            /tmp/turkdpi-package-check/usr/bin/turkdpi-gui
+          gui_status=$?
+          set -e
+          test "${gui_status}" -eq 124
+
+      - name: CachyOS paketini yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: turkdpi-cachyos-x86_64
+          path: turkdpi-*-x86_64.pkg.tar.zst
+          if-no-files-found: error
+          retention-days: 30
