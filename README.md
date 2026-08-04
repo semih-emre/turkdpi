@@ -78,10 +78,12 @@ sudo apt install ./build/deb/turkdpi_0.4.1_arm64.deb
 
 ## Hazır amd64 ve arm64 paketleri
 
-GitHub Actions her `main` güncellemesinde iki ayrı yerel Linux derlemesi üretir:
+GitHub Actions her `main` güncellemesinde iki mimari için yerel Linux paketleri üretir:
 
 - `turkdpi-amd64`: Intel/AMD 64-bit Debian, Ubuntu ve uyumlu dağıtımlar.
 - `turkdpi-arm64`: Raspberry Pi 5 ve diğer ARM64 Debian tabanlı sistemler.
+- `turkdpi-cachyos-x86_64`: CachyOS ve Arch tabanlı Intel/AMD 64-bit sistemler
+  için pacman ile kurulabilen `.pkg.tar.zst` paketi.
 
 Qt arayüzünün asgari sürümü, Ubuntu 24.04 ile uyumlu olacak şekilde Qt 6.4'tür.
 
