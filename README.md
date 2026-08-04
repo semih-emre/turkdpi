@@ -67,7 +67,8 @@ sudo apt install --no-install-recommends build-essential cargo cmake dpkg-dev gi
   dnscrypt-proxy libcap-dev libmnl-dev libnetfilter-queue-dev libnfnetlink-dev network-manager ninja-build \
   nftables pkexec qt6-base-dev qt6-declarative-dev qt6-qpa-plugins \
   qml6-module-qtqml-workerscript qml6-module-qtquick \
-  qml6-module-qtquick-controls qml6-module-qtquick-layouts zlib1g-dev
+  qml6-module-qtquick-controls qml6-module-qtquick-layouts \
+  qml6-module-qtquick-templates qml6-module-qtquick-window zlib1g-dev
 
 git clone https://github.com/semih-emre/turkdpi.git
 cd turkdpi
