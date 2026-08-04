@@ -35,7 +35,8 @@ jobs:
           sudo apt-get install --yes --no-install-recommends \
             build-essential cargo cmake git ninja-build pkg-config shellcheck \
             libcap-dev libmnl-dev libnetfilter-queue-dev libnfnetlink-dev zlib1g-dev \
-            qt6-base-dev qt6-declarative-dev
+            qt6-base-dev qt6-declarative-dev qml6-module-qtqml-workerscript \
+            qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts
 
       - name: Kaynak testlerini çalıştır
         run: |
@@ -71,6 +72,12 @@ jobs:
           file build/package-check/usr/bin/turkdpi-service | grep -F "${expected}"
           file build/package-check/usr/bin/turkdpi-gui | grep -F "${expected}"
           file build/package-check/usr/lib/turkdpi/nfqws | grep -F "${expected}"
+
+          set +e
+          QT_QPA_PLATFORM=offscreen timeout 5s build/package-check/usr/bin/turkdpi-gui
+          gui_status=$?
+          set -e
+          test "${gui_status}" -eq 124
 
       - name: Paketi yükle
         uses: actions/upload-artifact@v4
