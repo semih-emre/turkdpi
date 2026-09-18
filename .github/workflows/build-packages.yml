@@ -42,11 +42,22 @@ jobs:
 
       # Motor kurulu olduğunda entegrasyon testleri gerçekten çalışsın:
       # proxy yolunun uçtan uca kurulduğunu yalnızca bunlar doğruluyor.
+      #
+      # Adım bilerek ayrıntılı: burada bir şey bozulduğunda sorun genellikle
+      # kodda değil ortamda (indirilen ikili çalışmıyor, ağ kısıtlı) oluyor ve
+      # bunu log olmadan ayırt etmek mümkün değil.
       - name: Motoru kur ve entegrasyon testlerini çalıştır
+        env:
+          TURKDPI_ENGINE_DIR: ${{ github.workspace }}/target/engine
         run: |
-          mkdir -p "${PWD}/target/engine"
-          TURKDPI_ENGINE_DIR="${PWD}/target/engine" cargo run -- install-engine
-          TURKDPI_ENGINE_DIR="${PWD}/target/engine" cargo test --test engine_integration
+          set -x
+          mkdir -p "${TURKDPI_ENGINE_DIR}"
+          cargo run --quiet -- install-engine
+          ls -l "${TURKDPI_ENGINE_DIR}"
+          file "${TURKDPI_ENGINE_DIR}/ciadpi"
+          # Motorun bu ortamda gerçekten çalıştığını testlerden önce görelim.
+          "${TURKDPI_ENGINE_DIR}/ciadpi" --help | head -n 3
+          cargo test --test engine_integration -- --nocapture
 
       - name: Windows ve macOS derlemesi bozulmadı mı?
         run: |
@@ -71,7 +82,6 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.7.2'
-          modules: 'qtdeclarative'
           cache: true
 
       - name: Servisi derle
@@ -138,7 +148,6 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.7.2'
-          modules: 'qtdeclarative'
           cache: true
 
       - name: Servisi derle
