@@ -1,209 +1,206 @@
-# TurkDPI 0.4.1
+# TurkDPI
 
-TurkDPI; CachyOS x86_64/KDE Plasma ile Debian 13 ve Raspberry Pi OS ARM64 üzerinde Discord, Roblox ve genel web erişimine odaklanan bir `nfqws` yöneticisidir. VPN değildir; trafiği uzak bir sunucuya taşımaz, TLS çözmez, telemetri toplamaz ve kullanıcı trafiğini kaydetmez.
+Engellenen servislere VPN olmadan erişmek için, ağı **ölçüp** uygun kaçınma
+stratejisini **arayarak bulan** bir araç. Windows, Linux ve macOS'ta çalışır.
 
-> Bu yazılım ağ paketlerinin aktarım biçimini ve seçildiğinde NetworkManager DNS ayarını değiştirir. Yerel mevzuata ve kullandığınız hizmetlerin koşullarına uygun kullanmak sizin sorumluluğunuzdadır.
+Bu bir VPN ya da proxy hizmeti değildir: trafik hiçbir üçüncü sunucuya
+yönlendirilmez. Yapılan tek şey, ilk paketlerin engelleme donanımı tarafından
+eşleştirilmesini önlemek.
 
-## 0.4.1 yenilikleri
+---
 
-- NetworkManager DNS/DHCP olaylarının systemd servisini sürekli yeniden başlatması önlendi.
-- Manuel `systemctl stop` sonrası DNS geri yükleme olayının servisi yeniden açması engellendi.
-- Açılış, durdurma ve yeniden başlatma yaşam döngüsü Raspberry Pi 5 üzerinde doğrulandı.
+## Neden başka araçlardan farklı
 
-### 0.4.0 ile eklenenler
+Sabit ayar listesi denemek Türkiye'de güvenilir çalışmıyor, çünkü operatörler
+farklı DPI donanımı kullanıyor: doğru TTL değeri, bölme konumu ve hile yöntemi
+ağdan ağa değişiyor. TurkDPI tahmin etmek yerine ölçüyor.
 
-- Raspberry Pi 5 ARM64 ve Debian 13 için yerel `.deb` paket üretimi.
-- Zapret/nfqws motorunu sabitlenmiş commit’ten ARM64 üzerinde otomatik derleme.
-- Arch/CachyOS ve Debian/Raspberry Pi OS arasında çalışan ortak uygulama içi güncelleyici.
-- Debian’daki `/usr/sbin/nft` yolu ve KDE dışındaki `x-terminal-emulator` desteği.
-- Arch paketinde `aarch64` mimarisi ve dağıtımlar arası `zlib` sanal bağımlılığı.
-- UDP/53 üzerindeki Cloudflare DNS engellenirse otomatik devreye giren şifreli Cloudflare DoH yedeği.
+**1. Teşhis.** Engellemenin *nasıl* yapıldığı belirleniyor:
 
-### 0.3.0 ile eklenenler
+| Teşhis | Anlamı |
+|---|---|
+| `sni_reset` | ClientHello sonrası RST enjekte ediliyor (Türkiye'de en yaygın) |
+| `sni_drop` | Paket sessizce düşürülüyor |
+| `block_page` | 443 portundan düz metin HTTP yanıtı dönüyor |
+| `dns_poisoned` | Sistem çözümleyicisi sahte adres veriyor |
+| `ip_blocked` | TCP bağlantısı hiç kurulamıyor |
 
-- Açılışta ve altı saatte bir GitHub üzerinden sürüm denetimi, KDE masaüstü bildirimi ve uygulama içi **Güncelle** düğmesi.
-- Güncelleme kaynak kodunu normal kullanıcı hesabında derler; yalnızca oluşan paketin kurulumu Polkit onayı ister.
-- Oturum gerektiren Discord/Roblox ana sayfalarını başarı şartı saymayan, hata ayrıntılarını gösteren daha güvenilir otomatik test.
-- Discord Voice IP Discovery/STUN için resmi Zapret örnekleriyle uyumlu, bozuk sağlama toplamı kullanmayan RTC stratejisi.
+**2. DPI mesafesinin ölçümü.** En değerli adım bu. Kurulu bir bağlantıda
+ClientHello artan TTL değerleriyle gönderiliyor; RST'nin geldiği ilk TTL,
+engelleme donanımının kaç hop uzakta olduğunu veriyor. Bu sayı doğrudan
+`--dpi-desync-ttl` (zapret) ve `--ttl` (ByeDPI) değerine dönüşüyor — sahte
+paketin DPI'ı kandırıp gerçek sunucuya ulaşmaması için tam olarak gereken şey.
 
-### 0.2.0 ile eklenenler
+**3. Strateji araması.** Teşhise göre aday stratejiler üretilip en olasıdan
+başlayarak sırayla deneniyor. RST enjeksiyonu varsa sahte paket yöntemleri,
+paket düşürülüyorsa SNI'yi segmentlere yayan bölme yöntemleri öne alınıyor.
+Her aday gerçek bir TLS el sıkışmasıyla doğrulanıyor.
 
-- Discord Voice IP Discovery ve STUN paketleri için özel RTC profili.
-- Discord Voice Ready mesajının verdiği değişken hedef portları kaçırmamak için DNS/DHCP/NTP dışındaki UDP çıkışlarının NFQUEUE tarafından görülmesi.
-- Roblox web/CDN alan adları ve dinamik `49152–65535/UDP` oyun oturumları için ayrı profil.
-- Belirli alan listesine bağlı olmayan genel HTTP/TLS/QUIC profili.
-- Etkin NetworkManager bağlantısına otomatik Cloudflare DNS şablonu: `1.1.1.1`, `1.0.0.1` ve IPv6 karşılıkları.
-- DNS değişikliğinden önce bağlantı UUID’sine göre yedekleme ve durdurma/temizlemede otomatik geri yükleme.
+**4. Ağ hafızası.** Çalışan strateji ağ bazında kaydediliyor; aynı ağa tekrar
+bağlanıldığında arama yapılmadan uygulanıyor. Kayıtlı strateji yine de körü
+körüne güvenilmiyor — önce doğrulanıyor, tutmazsa tam arama yapılıyor.
 
-## Profiller
+---
 
-- **Discord:** Discord web, Gateway, QUIC, STUN ve Voice IP Discovery/RTC.
-- **Roblox:** Roblox web/CDN ile dinamik oyun UDP portları. İlk bilinmeyen UDP paketlerine müdahale ettiği için yalnız Roblox gerektiğinde seçilmelidir.
-- **Genel:** Alan adı listesi kullanmadan tüm HTTP/TLS ve QUIC web trafiği. Bilinmeyen oyun UDP’sine dokunmaz.
-- **Güvenli:** Discord ve Roblox alan listesinde düşük müdahaleli TLS/QUIC; Discord RTC desteği.
-- **Dengeli:** Aynı hizmetlerde daha güçlü fake + multisplit stratejisi.
-- **Agresif:** Tüm web trafiği ve ilk bilinmeyen UDP paketleri. Diğer profiller çalışmazsa kullanılmalıdır.
+## Motorlar
 
-Alan adına göre filtreleme TLS SNI/HTTP Host ve QUIC Initial aşamasında yapılabilir. Discord ses ve Roblox oyun paketleri bağlantı kurulduktan sonra alan adı taşımadığından UDP filtreleri protokol/port temellidir.
+Aynı strateji, sistemde ne varsa ona çevriliyor:
 
-## Mimari ve güvenlik sınırı
+| Arka uç | Platform | Yöntem | Yetki | Kapsam |
+|---|---|---|---|---|
+| `nfqws` | Linux | nftables NFQUEUE | root | tüm trafik |
+| `winws` | Windows | WinDivert sürücüsü | yönetici | tüm trafik |
+| `ciadpi` (ByeDPI) | hepsi | yerel SOCKS5 proxy | **gerekmez** | proxy'ye yönlendirilen |
 
-- `turkdpi-gui`: Root olmayan Qt 6/QML arayüzü. NetworkManager bağlantı adını sistem D-Bus üzerinden okur.
-- `turkdpi-service`: Root yetkili Rust yardımcısı. Yalnızca sabit eylemleri ve beyaz listedeki profil/DNS değerlerini kabul eder; shell oluşturmaz.
-- Polkit: GUI, yardımcının mutlak yolunu `pkexec` ile çağırır.
-- nftables: Yalnızca `table inet turkdpi` oluşturulur/silinir. NFQUEUE kuralları `bypass` içerir; motor yoksa trafik kesilmez. Loopback ile DNS, DHCPv4/v6 ve NTP UDP trafiği kuyruğa alınmaz.
-- DNS: `/etc/resolv.conf` doğrudan yazılmaz. Etkin NetworkManager bağlantısı `nmcli` process API ile değiştirilir. Önce `1.1.1.1` ve `1.0.0.1` denenir; UDP DNS engelliyse yalnız loopback üzerinde çalışan şifreli Cloudflare DoH yedeği kullanılır.
-- Gizlilik: Paket içeriği, kullanıcı mesajı, DNS sorgusu veya trafik kaydı tutulmaz.
+Seçim otomatik: yetki varsa şeffaf mod, yoksa proxy moduna düşülüyor. Böylece
+yönetici yetkisi olmayan kullanıcı da "hiç çalışmadı" durumunda kalmıyor.
 
-Her ağ değişikliğinde NetworkManager dispatcher etkin systemd servisini yeniden başlatır. Otomatik profil sonucu bağlantı UUID’siyle `/var/lib/turkdpi/networks/` altında saklanır. DNS yedeği `/var/lib/turkdpi/dns-backups/` altında kip `0600` ile tutulur.
+Şeffaf mod tercih ediliyor çünkü uygulama ayarı gerektirmiyor ve UDP'yi de
+kapsıyor — Discord sesi için gereken bu.
 
-## Raspberry Pi 5 / Debian 13 kurulumu
+---
 
-Raspberry Pi OS 64-bit veya Debian 13 ARM64 üzerinde:
+## Kurulum
 
-```bash
-sudo apt update
-sudo apt install --no-install-recommends build-essential cargo cmake dpkg-dev git \
-  dnscrypt-proxy libcap-dev libmnl-dev libnetfilter-queue-dev libnfnetlink-dev network-manager ninja-build \
-  nftables pkexec qt6-base-dev qt6-declarative-dev qt6-qpa-plugins \
-  qml6-module-qtqml-workerscript qml6-module-qtquick \
-  qml6-module-qtquick-controls qml6-module-qtquick-layouts \
-  qml6-module-qtquick-templates qml6-module-qtquick-window zlib1g-dev
+### Windows
 
-git clone https://github.com/semih-emre/turkdpi.git
-cd turkdpi
-./scripts/build-deb.sh
-sudo apt install ./build/deb/turkdpi_0.4.1_arm64.deb
-```
+Sürüm sayfasından `turkdpi-windows-x64.zip` indirip açın, `turkdpi-gui.exe`
+çalıştırın. Şeffaf mod istiyorsanız yönetici olarak çalıştırın.
 
-## Hazır amd64 ve arm64 paketleri
-
-GitHub Actions her `main` güncellemesinde iki mimari için yerel Linux paketleri üretir:
-
-- `turkdpi-amd64`: Intel/AMD 64-bit Debian, Ubuntu ve uyumlu dağıtımlar.
-- `turkdpi-arm64`: Raspberry Pi 5 ve diğer ARM64 Debian tabanlı sistemler.
-- `turkdpi-cachyos-x86_64`: CachyOS ve Arch tabanlı Intel/AMD 64-bit sistemler
-  için pacman ile kurulabilen `.pkg.tar.zst` paketi.
-
-Qt arayüzünün asgari sürümü, Ubuntu 24.04 ile uyumlu olacak şekilde Qt 6.4'tür.
-
-Paketler deponun **Actions → Linux paketlerini derle** sayfasındaki başarılı
-çalışmanın **Artifacts** bölümünden indirilebilir. Her pakette servis, Qt arayüzü
-ve `nfqws` dosyalarının hedef CPU mimarisi otomatik doğrulanır.
-
-Grafik masaüstü olmayan Pi kurulumunda servis ve komut satırı aracı kullanılabilir:
+### Linux (Debian / Ubuntu / Raspberry Pi)
 
 ```bash
-sudo turkdpi-service start discord
-sudo turkdpi-service status
-sudo turkdpi-service cleanup
+sudo apt install ./turkdpi_<sürüm>_<mimari>.deb
 ```
 
-Qt arayüzü için çalışan bir Wayland/X11 oturumu gerekir. Paket, grafik oturumu olmasa da derlenebilir ve servis olarak çalışabilir.
-
-## CachyOS kurulumu
+### Arch / CachyOS
 
 ```bash
-sudo pacman -S --needed base-devel cargo cmake dnscrypt-proxy git konsole ninja rust qt6-base qt6-declarative \
-  networkmanager nftables polkit curl libnetfilter_queue libnfnetlink libmnl zlib-ng-compat
+makepkg -si
 ```
 
-CachyOS klasik `zlib` yerine `zlib-ng-compat` kullanır. Pacman bu paketi veya `lib32-zlib-ng-compat` paketini kaldırmayı önerirse işlemi iptal edin.
+### macOS
 
-Kaynak deposundan paket oluşturma:
+`turkdpi-macos-arm64.zip` indirip açın. İmzasız olduğu için ilk açılışta
+Gatekeeper uyarı verir; Sistem Ayarları → Gizlilik ve Güvenlik üzerinden izin
+vermeniz gerekir.
 
-```bash
-git clone https://github.com/semih-emre/turkdpi.git
-cd turkdpi
-git archive --prefix=turkdpi-0.4.1/ -o turkdpi-0.4.1.tar.gz HEAD
-makepkg -Csi
-```
-
-`PKGBUILD`, Zapret `v72.10` sürümünü tam commit kimliğine sabitler. İlk derlemede Zapret kaynağı indirilir.
-
-Mevcut kurulumdan güncelleme:
-
-```bash
-cd turkdpi
-git pull --ff-only
-git archive --prefix=turkdpi-0.4.1/ -o turkdpi-0.4.1.tar.gz HEAD
-makepkg -Csi
-```
+---
 
 ## Kullanım
 
-```bash
-turkdpi-gui
-```
-
-Bir profil başlatıldığında Cloudflare DNS varsayılan olarak etkinleşir. Doğrudan `1.1.1.1`/`1.0.0.1` yanıt vermezse uygulama paketle gelen sabit Cloudflare doğrulayıcılarıyla `127.0.3.1` üzerinde şifreli DoH yedeğini başlatır. GUI’deki DNS kutusu kapatılırsa süreç durdurulur ve bağlantının önceki DNS değerleri geri yüklenir.
-
-### Uygulama içinden güncelleme
-
-TurkDPI açıldıktan kısa süre sonra ve uygulama açık kaldığı sürece altı saatte bir `version.json` dosyasını projenin GitHub `main` dalından denetler. Daha yeni bir sürüm varsa masaüstü bildirimi gösterilir ve **Güncelle** düğmesi etkinleşir. Düğme Konsole veya sistemin varsayılan terminalini açar, HTTPS ile kaynak kodunu indirir, bildirilen sürüm ile kaynağın sürümünü karşılaştırır ve paketi normal kullanıcı hesabında derler. CachyOS’ta `pacman`, Debian/Raspberry Pi OS’ta `apt` ile yapılan son kurulum adımı Polkit onayı ister.
-
-Güncelleme bittikten sonra uygulamayı kapatıp yeniden açın. Denetim başarısız olursa mevcut sürüm çalışmaya devam eder; arayüzde hata açıklaması gösterilir.
-
-Komut satırından DNS yönetimi:
+Arayüzde tek düğme yeterli: **Otomatik Düzelt**. Komut satırından:
 
 ```bash
-sudo turkdpi-service set-dns cloudflare
-sudo turkdpi-service set-dns automatic
+turkdpi-service auto
 ```
 
-Sistem açılışında otomatik profil testi:
+Diğer komutlar:
+
+| Komut | İşlev |
+|---|---|
+| `auto` | teşhis et, stratejiyi bul ve uygula |
+| `stop` | motoru durdur, kuralları geri al |
+| `status` | mevcut durumu JSON olarak yaz |
+| `test` | hedeflere erişimi ölç |
+| `diagnose [alan adı…]` | engellemenin nasıl yapıldığını teşhis et |
+| `selftest [alan adı]` | TTL ölçüm düzeneğini doğrula |
+| `backends` | kullanılabilir motorları listele |
+| `info` | ortamı JSON olarak bildir |
+| `logs [satır]` | günlükleri göster |
+| `install-engine [-f]` | proxy motorunu indir ve doğrula |
+| `set-dns <mod>` | `cloudflare` \| `automatic` (şimdilik yalnızca Linux) |
+
+### Proxy modu kullanıyorsanız
+
+Trafik kendiliğinden yönlenmez. Arayüzdeki adresi (`127.0.0.1:<port>`)
+uygulamanın SOCKS5 proxy ayarına girin. Discord'da: Ayarlar → Ses ve Görüntü
+bölümünde proxy ayarı yoktur; sistem proxy'sini kullanmak ya da yönetici
+yetkisiyle şeffaf moda geçmek gerekir.
+
+---
+
+## Günlükler
+
+Hata bildirirken göndereceğiniz dosya burada:
+
+| Platform | Konum |
+|---|---|
+| Windows | `%ProgramData%\TurkDPI\logs` |
+| Linux | `/var/lib/turkdpi/logs` |
+| macOS | `/Library/Application Support/TurkDPI/logs` |
+
+Arayüzdeki **Günlükleri Aç** düğmesi doğrudan bu klasörü açar.
+
+Kayıtlar günlük dosyalara yazılır, **son 3 gün** saklanır ve daha eskiler
+otomatik silinir. Tek bir dosya 4 MB'ı aşarsa baş tarafı atılıp son kısım
+korunur. Trafik içeriği ya da ziyaret edilen adresler kaydedilmez; yalnızca
+teşhis sonucu, denenen stratejiler ve hata mesajları tutulur.
+
+---
+
+## Motor ikilileri
+
+Üçüncü taraf ikililer bu depoya commit edilmez. `engine/manifest.json` hangi
+sürümün nereden indirileceğini ve SHA-256 özetini sabitler; `install-engine`
+indirdiği dosyayı bu özetle doğrular ve eşleşmezse kurulumu iptal eder.
+
+Doğrulama isteğe bağlı değil: indirme, tam da bu aracın aşmaya çalıştığı türden
+müdahaleye açık bir ağ üzerinden geçiyor.
+
+Kullanılan projeler:
+
+- [zapret](https://github.com/bol-van/zapret) — `nfqws`, `winws` (MIT)
+- [ByeDPI](https://github.com/hufrea/byedpi) — `ciadpi` (GPL-3.0)
+
+---
+
+## Derleme
+
+Rust 1.88+ ve Qt 6.4+ gerekir.
 
 ```bash
-sudo systemctl enable --now turkdpi.service
+cargo test                        # çekirdek testleri
+cargo build --release             # servis
+cmake -S gui -B build/gui && cmake --build build/gui   # arayüz
 ```
 
-Discord RTC uçtan uca testi kullanıcı oturumu gerektirdiğinden otomatik test yalnız DNS çözümlemesini, kimlik doğrulama istemeyen Discord Gateway HTTPS uç noktasını ve yerel UDP gönderimini doğrular. “UDP gönderildi” sonucu ses sunucusundan yanıt alındığı anlamına gelmez.
+Bağımlılıklar bilerek asgari tutuldu: `anyhow`, `serde`, `serde_json`, `toml`
+ve Unix'te `libc`. TLS, kriptografi ve takvim kütüphanesi yok — gereken asgari
+kod (ham ClientHello üretimi, SHA-256, tarih dönüşümü) `src/wire.rs`,
+`src/sha256.rs` ve `src/util.rs` içinde yazıldı. Bunun nedeni taşınabilirlik:
+bu kütüphanelerin çoğu C derleyicisi ya da import kütüphanesi üretimi
+gerektiriyor ve projenin derlenebildiği toolchain sayısını daraltıyordu.
 
-## Kaldırma ve kurtarma
+### Mimari
 
-```bash
-scripts/uninstall.sh
-```
+| Modül | Sorumluluk |
+|---|---|
+| `wire` | ham TLS ClientHello, DNS sorgusu, yanıt sınıflandırma |
+| `probe` | engelleme teşhisi ve DPI mesafesi ölçümü |
+| `strategy` | aday strateji üretimi, zapret/ByeDPI argümanlarına çevirme |
+| `engine` | arka uç seçimi, süreç ve güvenlik duvarı yaşam döngüsü |
+| `verify` | stratejinin gerçekten işe yarayıp yaramadığının ölçümü |
+| `search` | teşhisten çalışan yapılandırmaya kadar olan akış |
+| `socks` | SOCKS5 istemcisi (proxy modunu doğrulamak için) |
+| `log` | diske günlük, yaş ve boyut sınırlarıyla |
 
-GUI yanıt vermiyorsa:
+---
 
-```bash
-sudo systemctl stop turkdpi.service
-sudo turkdpi-service cleanup
-sudo nft list table inet turkdpi
-```
+## Sınırlar
 
-Son komutun “No such file or directory” vermesi beklenir. `cleanup`, TurkDPI’nin nfqws süreçlerini durdurur, yalnız `inet turkdpi` tablosunu siler ve yedeklenmiş NetworkManager DNS değerlerini geri yükler.
+- **IP seviyesinde engellemede** paket kurcalamanın faydası yok; teşhis bunu
+  `ip_blocked` olarak bildirir ve dürüstçe söyler.
+- **DNS değiştirme** şimdilik yalnızca Linux'ta (NetworkManager üzerinden).
+  Windows ve macOS'ta zehirlenmiş DNS, proxy motorunun isim çözümlemeyi kendi
+  tarafında yapmasıyla atlatılır.
+- **macOS'ta şeffaf mod yok**; proxy modu çalışır.
+- Ağ parmak izi yerel alt ağdan üretilir, bu yüzden iki farklı ağ aynı özel
+  blokta (örneğin `192.168.1.0/24`) çakışabilir. Yanlış eşleşmenin bedeli
+  birkaç saniye: kayıtlı strateji doğrulamayı geçemezse tam arama yapılır.
 
-Yardımcı ikili yoksa yalnız uygulama tablosunu açıkça silin:
+---
 
-```bash
-sudo nft delete table inet turkdpi
-```
+## Lisans
 
-Hiçbir zaman `nft flush ruleset` çalıştırmayın. Her ağ kuralı değişikliğinden önce tam nftables görünümü `/var/lib/turkdpi/backups/ruleset-*.json` altında saklanır.
-
-## Bilinen sınırlar
-
-- Türkiye’de DPI davranışı ISS, rota ve zamana göre değişebilir; tek bir stratejinin her bağlantıda çalışması garanti edilemez.
-- Discord RTC testi oturum açmadan tamamlanamaz.
-- Roblox oyun trafiği dinamik UDP portu ve IP kullanır. Roblox profili `49152–65535/UDP` aralığındaki tanınmayan ilk paketleri işler ve aynı aralıktaki başka uygulamaları etkileyebilir.
-- Agresif profil bilinmeyen UDP trafiğine de müdahale eder; yalnız son seçenek olarak kullanılmalıdır.
-- Cloudflare DNS veya şifreli DoH captive portal kullanan halka açık Wi‑Fi ağlarında giriş sayfasını engelleyebilir. Bu durumda DNS kutusunu kapatın.
-- Raspberry Pi OS Lite gibi grafik oturumu olmayan sistemlerde Qt arayüzü açılamaz; servis ve CLI kullanılabilir.
-- Raspberry Pi’de Discord/Roblox istemcisi çalışmıyorsa gerçek uygulama trafiğinin uçtan uca testi aynı ağdaki istemci cihazdan yapılmalıdır.
-
-## Doğrulama
-
-```bash
-cargo fmt --check
-cargo check
-cargo clippy --all-targets -- -D warnings
-cmake -S gui -B build/gui -G Ninja
-cmake --build build/gui
-shellcheck scripts/*.sh scripts/90-turkdpi scripts/turkdpi-sleep
-namcap PKGBUILD
-scripts/build-deb.sh
-```
-
-Canlı ağ testi öncesinde ayrıca `sudo nft -j list ruleset > nft-before.json` ile elle yedek alın.
+MIT. Ayrıntılar için [LICENSE](LICENSE).

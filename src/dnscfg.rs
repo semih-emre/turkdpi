@@ -1,3 +1,10 @@
+//! Sistem DNS'inin Cloudflare'e alınması ve geri yüklenmesi (Linux).
+//!
+//! Teşhis katmanı DNS zehirlemesini tespit edebiliyor; çözümü bu modül
+//! uyguluyor. NetworkManager'a bağlı olduğu için Windows ve macOS'ta karşılığı
+//! henüz yok — o platformlarda zehirlenmiş DNS, proxy motorunun isim
+//! çözümlemeyi kendi tarafında yapmasıyla aşılıyor.
+
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};

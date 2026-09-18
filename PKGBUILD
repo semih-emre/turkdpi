@@ -34,9 +34,11 @@ package() {
   install -Dm644 polkit/org.turkdpi.manage.policy "${pkgdir}/usr/share/polkit-1/actions/org.turkdpi.manage.policy"
   install -Dm755 scripts/90-turkdpi "${pkgdir}/etc/NetworkManager/dispatcher.d/90-turkdpi"
   install -Dm755 scripts/turkdpi-sleep "${pkgdir}/usr/lib/systemd/system-sleep/turkdpi"
-  install -Dm644 profiles/*.toml -t "${pkgdir}/usr/share/turkdpi/profiles"
+  # Sabit profil dosyaları kaldırıldı: stratejiler ağ teşhisine göre üretiliyor.
+  # Host listeleri duruyor, motorun kapsamını daraltmak için kullanılıyor.
   install -Dm644 profiles/*.txt -t "${pkgdir}/usr/share/turkdpi"
   install -Dm644 config/dnscrypt-proxy.toml "${pkgdir}/usr/share/turkdpi/dnscrypt-proxy.toml"
+  install -Dm644 engine/manifest.json "${pkgdir}/usr/share/turkdpi/engine-manifest.json"
   install -Dm644 version.json "${pkgdir}/usr/share/turkdpi/version.json"
   install -Dm644 README.md "${pkgdir}/usr/share/doc/turkdpi/README.md"
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/turkdpi/LICENSE"

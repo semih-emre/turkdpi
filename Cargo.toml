@@ -1,16 +1,36 @@
 [package]
 name = "turkdpi-service"
-version = "0.4.1"
+version = "0.5.0"
 edition = "2021"
 license = "MIT"
+# `slice::as_chunks` 1.88'de, `Option::is_none_or` 1.82'de kararlı oldu.
+# Dağıtımların apt/pacman ile gelen Rust'ı bunun gerisinde kalabiliyor; CI
+# bu yüzden toolchain'i rustup üzerinden kuruyor.
+rust-version = "1.88"
 
+# Çekirdek bir kütüphane olarak derleniyor: hem CLI hem de testler aynı kodu
+# kullanıyor ve platforma özgü olmayan mantık (teşhis, strateji üretimi, profil
+# çözümleme) üç platformda da test edilebiliyor.
+[lib]
+name = "turkdpi"
+path = "src/lib.rs"
+
+[[bin]]
+name = "turkdpi-service"
+path = "src/main.rs"
+
+# Bağımlılıklar bilerek asgari tutuluyor. Hiçbiri C derleyicisi ya da import
+# kütüphanesi üretimi gerektirmiyor; bu sayede proje MSVC, MinGW ve musl dahil
+# her toolchain'de derleniyor. TLS ve zaman biçimlendirme gibi işler için
+# kütüphane çekmek yerine gereken asgari kod `wire` ve `util` içinde yazıldı.
 [dependencies]
 anyhow = "1.0"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
-libc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [profile.release]
 lto = "thin"

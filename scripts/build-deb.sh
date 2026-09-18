@@ -58,9 +58,12 @@ install -Dm644 "${project_dir}/systemd/turkdpi.service" "${package_root}/usr/lib
 install -Dm644 "${project_dir}/polkit/org.turkdpi.manage.policy" "${package_root}/usr/share/polkit-1/actions/org.turkdpi.manage.policy"
 install -Dm755 "${project_dir}/scripts/90-turkdpi" "${package_root}/etc/NetworkManager/dispatcher.d/90-turkdpi"
 install -Dm755 "${project_dir}/scripts/turkdpi-sleep" "${package_root}/usr/lib/systemd/system-sleep/turkdpi"
-install -Dm644 "${project_dir}"/profiles/*.toml -t "${package_root}/usr/share/turkdpi/profiles"
+# Sabit profil dosyaları kaldırıldı: stratejiler artık ağ teşhisine göre
+# üretiliyor. Host listeleri duruyor, motorun kapsamını daraltmak için hâlâ
+# kullanılıyor.
 install -Dm644 "${project_dir}"/profiles/*.txt -t "${package_root}/usr/share/turkdpi"
 install -Dm644 "${project_dir}/config/dnscrypt-proxy.toml" "${package_root}/usr/share/turkdpi/dnscrypt-proxy.toml"
+install -Dm644 "${project_dir}/engine/manifest.json" "${package_root}/usr/share/turkdpi/engine-manifest.json"
 install -Dm644 "${project_dir}/version.json" "${package_root}/usr/share/turkdpi/version.json"
 install -Dm644 "${project_dir}/README.md" "${package_root}/usr/share/doc/turkdpi/README.md"
 install -Dm644 "${project_dir}/LICENSE" "${package_root}/usr/share/doc/turkdpi/copyright"
@@ -75,10 +78,11 @@ Priority: optional
 Architecture: ${architecture}
 Maintainer: TurkDPI contributors <smhtpl330@gmail.com>
 Installed-Size: ${installed_size}
-Depends: curl, dnscrypt-proxy, libmnl0, libnetfilter-queue1, libnfnetlink0, libqt6dbus6, libqt6network6, network-manager, nftables, pkexec, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-templates, qml6-module-qtquick-window, qt6-qpa-plugins, zlib1g
-Description: Discord, Roblox ve web için yerel DPI dayanıklılığı yöneticisi
- Raspberry Pi 5 ARM64, Debian ve CachyOS üzerinde nfqws, nftables ve
- NetworkManager kullanarak seçilebilir yerel profiller sağlar.
+Depends: curl, dnscrypt-proxy, libmnl0, libnetfilter-queue1, libnfnetlink0, libqt6network6, network-manager, nftables, pkexec, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-qtquick-templates, qml6-module-qtquick-window, qt6-qpa-plugins, tar, zlib1g
+Description: Discord, Roblox ve web icin yerel DPI dayanikliligi yoneticisi
+ Agi olcup engellemenin nasil yapildigini teshis eder, uygun kacinma
+ stratejisini arayarak bulur ve uygular. nfqws ile seffaf modda, ByeDPI ile
+ yetki gerektirmeyen proxy modunda calisir.
 EOF
 cat >"${package_root}/DEBIAN/postinst" <<'EOF'
 #!/bin/sh

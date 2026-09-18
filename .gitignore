@@ -1,4 +1,9 @@
 /build/
 /target/
 /engine/nfqws
+/engine/ciadpi
+/engine/ciadpi.exe
+/engine/winws.exe
+/engine/WinDivert*
 *.tar.gz
+*.pkg.tar.zst

@@ -1,0 +1,42 @@
+{
+  "_comment": [
+    "Motor ikilileri bu depoya commit edilmiyor. Bu dosya, hangi sürümün",
+    "nereden indirileceğini ve SHA-256 özetinin ne olması gerektiğini",
+    "sabitliyor. Özet doğrulaması zorunlu: indirme kanalı, tam da bu aracın",
+    "aşmaya çalıştığı türden müdahaleye açık bir ağ üzerinden geçiyor.",
+    "Özetler yayınlanan dosyalardan hesaplandı; sürüm yükseltirken yeniden",
+    "hesaplanmalı."
+  ],
+  "byedpi": {
+    "version": "0.17.3",
+    "binary": "ciadpi",
+    "license": "GPL-3.0",
+    "source": "https://github.com/hufrea/byedpi",
+    "targets": {
+      "windows-x86_64": {
+        "url": "https://github.com/hufrea/byedpi/releases/download/v0.17.3/byedpi-17.3-x86_64-w64.zip",
+        "sha256": "70d2c94147193cb915f9c6eb5144b8d404dacbcfa90bda2383b6b211afafa456",
+        "member": "ciadpi.exe"
+      },
+      "windows-i686": {
+        "url": "https://github.com/hufrea/byedpi/releases/download/v0.17.3/byedpi-17.3-i686-w64.zip",
+        "sha256": "3f3d0af999371cfa623bd641738a42785e107a9d829b38480ed3d942dafea28a",
+        "member": "ciadpi.exe"
+      },
+      "linux-x86_64": {
+        "url": "https://github.com/hufrea/byedpi/releases/download/v0.17.3/byedpi-17.3-x86_64.tar.gz",
+        "sha256": "98f73c32eacb571ebd88d790f6376ed9e70f02d44c1fe862472ecea75cd7117d",
+        "member": "ciadpi"
+      },
+      "linux-aarch64": {
+        "url": "https://github.com/hufrea/byedpi/releases/download/v0.17.3/byedpi-17.3-aarch64.tar.gz",
+        "sha256": "d5806504e159e8119ede5af1164a609251b0520cd4483a7db611b6d238b9404b",
+        "member": "ciadpi"
+      }
+    },
+    "_macos_note": [
+      "ByeDPI macOS için hazır ikili yayınlamıyor. macOS paketi, kaynaktan",
+      "derlenen ikiliyi CI üzerinden kendi sürüm varlıklarımıza ekliyor."
+    ]
+  }
+}
