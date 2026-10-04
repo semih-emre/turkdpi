@@ -1,4 +1,4 @@
 {
-  "version": "0.4.1",
-  "notes": "NetworkManager yeniden başlatma döngüsü ve manuel servis durdurma davranışı düzeltildi; Raspberry Pi 5 üzerinde doğrulandı."
+  "version": "0.5.0",
+  "notes": "Windows şeffaf motoru pakete eklendi; motor yedeği ve sınırlı aramada split stratejileri düzeltildi."
 }

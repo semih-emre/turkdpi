@@ -367,8 +367,16 @@ pub fn candidates_for(report: &NetworkReport) -> Vec<Strategy> {
     let mut ordered = match report.dominant {
         // Enjeksiyon tabanlı engelleme: önce sahte paket, sonra bölme.
         Verdict::SniReset { .. } | Verdict::BlockPage => {
-            let mut list = fake_candidates(&hints);
-            list.extend(split_candidates());
+            let fake = fake_candidates(&hints);
+            let split = split_candidates();
+            // DPI mesafesi ölçülemezse sahte paket listesi tek başına 36
+            // aday üretir ve aramanın 24 denemelik sınırında split'e sıra
+            // gelmez. İlk iki TTL'nin sahte paket denemelerinden sonra split
+            // ailesini sıraya al; böylece iki yöntem de sabit bütçede denenir.
+            let first_fake_batch = hints.len().min(2) * 6;
+            let mut list: Vec<Strategy> = fake.iter().take(first_fake_batch).cloned().collect();
+            list.extend(split);
+            list.extend(fake.into_iter().skip(first_fake_batch));
             list
         }
         // Paket düşürülüyorsa sahte paket göndermek işe yaramaz; asıl çözüm
@@ -459,6 +467,13 @@ mod tests {
         for expected in [2, 3, 4, 5, 6, 8] {
             assert!(tried.contains(&expected), "TTL {expected} denenmeli");
         }
+        assert!(
+            candidates
+                .iter()
+                .take(crate::search::DEFAULT_ATTEMPT_LIMIT)
+                .any(|strategy| matches!(strategy.desync, Desync::MultiSplit)),
+            "ölçüm yokken split stratejisi deneme sınırının içinde kalmalı"
+        );
     }
 
     #[test]

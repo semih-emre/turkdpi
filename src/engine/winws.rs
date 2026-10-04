@@ -19,7 +19,7 @@ use std::path::Path;
 
 /// WinDivert sürücü dosyası. Motorun yanında bulunmazsa `winws` başlar ama
 /// hiçbir paket yakalayamaz; bu sessiz başarısızlığı önceden yakalıyoruz.
-const DRIVER_FILES: [&str; 2] = ["WinDivert.dll", "WinDivert64.sys"];
+const DRIVER_FILES: [&str; 3] = ["cygwin1.dll", "WinDivert.dll", "WinDivert64.sys"];
 
 fn ensure_driver_present() -> Result<()> {
     let directory = paths::engine_dir();

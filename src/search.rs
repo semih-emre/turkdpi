@@ -135,6 +135,38 @@ fn try_strategy(
     Ok(result)
 }
 
+/// Şeffaf sürücü bazı sistemlerde kurulu olsa bile başlatılamayabilir
+/// (çekirdek kuyruğu, WinDivert sürücüsü veya güvenlik yazılımı). Proxy
+/// motoru kuruluysa aynı stratejiyi onun üzerinden de ölç.
+fn try_with_fallback(
+    preferred: Backend,
+    strategy: &Strategy,
+    hostlist: Option<&Path>,
+    targets: &[&str],
+) -> Option<(Backend, VerifyResult)> {
+    let mut best: Option<(Backend, VerifyResult)> = None;
+    let mut backends = vec![preferred];
+    if preferred != Backend::ByeDpi && Backend::ByeDpi.is_installed() {
+        backends.push(Backend::ByeDpi);
+    }
+
+    for backend in backends {
+        let Ok(result) = try_strategy(backend, strategy, hostlist, targets) else {
+            continue;
+        };
+        if result.is_complete() {
+            return Some((backend, result));
+        }
+        if best
+            .as_ref()
+            .is_none_or(|(_, current)| result.score() > current.score())
+        {
+            best = Some((backend, result));
+        }
+    }
+    best
+}
+
 /// Aramayı çalıştırır.
 pub fn run(
     targets: &[&str],
@@ -170,13 +202,15 @@ pub fn run(
     let total = candidates.len().min(limit);
 
     let mut attempts = Vec::new();
-    let mut best: Option<(Strategy, usize)> = None;
+    let mut best: Option<(Strategy, Backend, usize)> = None;
 
     for (index, strategy) in candidates.into_iter().take(limit).enumerate() {
         progress.trying(index + 1, total, &strategy);
         // Tek bir adayın başlatılamaması aramayı bitirmemeli: motor bu
         // argüman birleşimini desteklemiyor olabilir, sıradakine geçilir.
-        let Ok(result) = try_strategy(backend, &strategy, hostlist, targets) else {
+        let Some((working_backend, result)) =
+            try_with_fallback(backend, &strategy, hostlist, targets)
+        else {
             continue;
         };
         progress.tried(&result);
@@ -192,7 +226,7 @@ pub fn run(
             }
             return Ok(SearchOutcome {
                 report,
-                backend: Some(backend),
+                backend: Some(working_backend),
                 winner: Some(strategy),
                 complete: true,
                 attempts,
@@ -203,18 +237,19 @@ pub fn run(
         // açan kullanılıyor. Discord'un sohbeti açılıp sesi açılmaması, hiç
         // açılmamasından iyi.
         let score = result.score();
-        if score > 0 && best.as_ref().is_none_or(|(_, top)| score > *top) {
-            best = Some((strategy, score));
+        if score > 0 && best.as_ref().is_none_or(|(_, _, top)| score > *top) {
+            best = Some((strategy, working_backend, score));
         }
     }
 
-    let winner = best.map(|(strategy, _)| strategy);
+    let winning_backend = best.as_ref().map(|(_, backend, _)| *backend);
+    let winner = best.map(|(strategy, _, _)| strategy);
     if let (Some(name), Some(strategy)) = (&network, &winner) {
         let _ = remember(name, strategy);
     }
     Ok(SearchOutcome {
         report,
-        backend: Some(backend),
+        backend: winning_backend,
         winner,
         complete: false,
         attempts,

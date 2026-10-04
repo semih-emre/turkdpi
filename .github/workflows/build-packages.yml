@@ -87,6 +87,12 @@ jobs:
       - name: Servisi derle
         run: cargo build --release
 
+      - name: Windows şeffaf motorunu al
+        shell: pwsh
+        run: |
+          git clone https://github.com/bol-van/zapret-win-bundle.git build/zapret-win-bundle
+          git -C build/zapret-win-bundle checkout 6eb463a6758fb48cd101bc55dfd057e6e9d98af1
+
       - name: Arayüzü derle
         run: |
           cmake -S gui -B build/gui -DCMAKE_BUILD_TYPE=Release
@@ -99,6 +105,10 @@ jobs:
           New-Item -ItemType Directory -Force "$out/engine" | Out-Null
           Copy-Item target/release/turkdpi-service.exe $out
           Copy-Item build/gui/Release/turkdpi-gui.exe $out
+          Copy-Item build/zapret-win-bundle/zapret-winws/winws.exe $out/engine
+          Copy-Item build/zapret-win-bundle/zapret-winws/cygwin1.dll $out/engine
+          Copy-Item build/zapret-win-bundle/zapret-winws/WinDivert.dll $out/engine
+          Copy-Item build/zapret-win-bundle/zapret-winws/WinDivert64.sys $out/engine
           Copy-Item engine/manifest.json "$out/engine-manifest.json"
           Copy-Item profiles/*.txt $out
           Copy-Item version.json,README.md,LICENSE $out
@@ -123,6 +133,11 @@ jobs:
           # Motorun gerçekten paketlendiğini doğrula.
           if (-not (Test-Path "build/package/TurkDPI/engine/ciadpi.exe")) {
             throw "motor pakete girmemiş"
+          }
+          foreach ($file in 'winws.exe','cygwin1.dll','WinDivert.dll','WinDivert64.sys') {
+            if (-not (Test-Path "build/package/TurkDPI/engine/$file")) {
+              throw "Windows şeffaf motor dosyası eksik: $file"
+            }
           }
 
       - name: Arşivle
@@ -317,6 +332,8 @@ jobs:
           file /tmp/turkdpi-package-check/usr/bin/turkdpi-service | grep -F 'x86-64'
           file /tmp/turkdpi-package-check/usr/bin/turkdpi-gui | grep -F 'x86-64'
           file /tmp/turkdpi-package-check/usr/lib/turkdpi/nfqws | grep -F 'x86-64'
+          /tmp/turkdpi-package-check/usr/bin/turkdpi-service info
+          /tmp/turkdpi-package-check/usr/lib/turkdpi/nfqws --version
 
           set +e
           QT_QPA_PLATFORM=offscreen timeout 5s \
@@ -331,3 +348,38 @@ jobs:
           path: turkdpi-*-x86_64.pkg.tar.zst
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, windows, macos, linux, cachyos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Tüm platform paketlerini indir
+        uses: actions/download-artifact@v4
+        with:
+          pattern: turkdpi-*
+          path: dist
+          merge-multiple: true
+
+      - name: Release dosyalarını doğrula
+        run: |
+          test -f dist/turkdpi-windows-x64.zip
+          test -f dist/turkdpi-macos-arm64.zip
+          test -n "$(find dist -maxdepth 1 -name 'turkdpi_*_amd64.deb' -print -quit)"
+          test -n "$(find dist -maxdepth 1 -name 'turkdpi_*_arm64.deb' -print -quit)"
+          test -n "$(find dist -maxdepth 1 -name 'turkdpi-*-x86_64.pkg.tar.zst' -print -quit)"
+
+      - name: GitHub Release oluştur
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/turkdpi-windows-x64.zip
+            dist/turkdpi-macos-arm64.zip
+            dist/turkdpi_*_amd64.deb
+            dist/turkdpi_*_arm64.deb
+            dist/turkdpi-*-x86_64.pkg.tar.zst
