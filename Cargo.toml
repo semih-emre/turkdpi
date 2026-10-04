@@ -1,6 +1,6 @@
 [package]
 name = "turkdpi-service"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 license = "MIT"
 # `slice::as_chunks` 1.88'de, `Option::is_none_or` 1.82'de kararlı oldu.

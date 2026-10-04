@@ -1,4 +1,4 @@
 {
-  "version": "0.5.1",
+  "version": "0.5.2",
   "notes": "Windows şeffaf motoru pakete eklendi; motor yedeği ve sınırlı aramada split stratejileri düzeltildi."
 }
